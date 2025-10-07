@@ -1,35 +1,6 @@
-From: <Saved by Blink>
-Snapshot-Content-Location: https://sdmntprpolandcentral.oaiusercontent.com/files/00000000-e544-620a-8ad1-8488d6db52bb/raw?se=2025-10-07T21%3A08%3A07Z&sp=r&sv=2024-08-04&sr=b&scid=a1203a5e-3921-5968-bf08-ef33f9427211&skoid=b928fb90-500a-412f-a661-1ece57a7c318&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-10-07T17%3A52%3A03Z&ske=2025-10-08T17%3A52%3A03Z&sks=b&skv=2024-08-04&sig=YZIcZa4UYKLbIQbM7te/96QhPEHE6C7gNUrV5VzKKSY%3D
-Subject: 
-Date: Tue, 7 Oct 2025 23:03:17 +0200
-MIME-Version: 1.0
-Content-Type: multipart/related;
-	type="text/html";
-	boundary="----MultipartBoundary--TtgqAd1sNQHk7vLOwPE8hehfKBf2q32PwQukw61KjJ----"
-
-
-------MultipartBoundary--TtgqAd1sNQHk7vLOwPE8hehfKBf2q32PwQukw61KjJ----
-Content-Type: text/html
-Content-ID: <frame-58D028BEA0F36C1CCEA6E5945F3361F5@mhtml.blink>
-Content-Transfer-Encoding: quoted-printable
-Content-Location: https://sdmntprpolandcentral.oaiusercontent.com/files/00000000-e544-620a-8ad1-8488d6db52bb/raw?se=2025-10-07T21%3A08%3A07Z&sp=r&sv=2024-08-04&sr=b&scid=a1203a5e-3921-5968-bf08-ef33f9427211&skoid=b928fb90-500a-412f-a661-1ece57a7c318&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-10-07T17%3A52%3A03Z&ske=2025-10-08T17%3A52%3A03Z&sks=b&skv=2024-08-04&sig=YZIcZa4UYKLbIQbM7te/96QhPEHE6C7gNUrV5VzKKSY%3D
-
-<html><head><meta http-equiv=3D"Content-Type" content=3D"text/html; charset=
-=3Dwindows-1252"><link rel=3D"stylesheet" type=3D"text/css" href=3D"cid:css=
--afcd58be-bbcc-432c-9c54-4990149972ff@mhtml.blink" /><meta name=3D"color-sc=
-heme" content=3D"light dark"></head><body><pre style=3D"word-wrap: break-wo=
-rd; white-space: pre-wrap;">{
+{
   "workspace.library": ["${3rd}/luv/library"],
   "runtime.version": "LuaJIT",
   "diagnostics.globals": ["vim"],
   "workspace.checkThirdParty": false
 }
-</pre></body></html>
-------MultipartBoundary--TtgqAd1sNQHk7vLOwPE8hehfKBf2q32PwQukw61KjJ----
-Content-Type: text/css
-Content-Transfer-Encoding: quoted-printable
-Content-Location: cid:css-afcd58be-bbcc-432c-9c54-4990149972ff@mhtml.blink
-
-@charset "windows-1252";
-=0A
-------MultipartBoundary--TtgqAd1sNQHk7vLOwPE8hehfKBf2q32PwQukw61KjJ------

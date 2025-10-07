@@ -1,24 +1,4 @@
-From: <Saved by Blink>
-Snapshot-Content-Location: https://sdmntprpolandcentral.oaiusercontent.com/files/00000000-20b8-620a-ada1-2b2732596508/raw?se=2025-10-07T21%3A08%3A28Z&sp=r&sv=2024-08-04&sr=b&scid=f90919a6-48e4-5c79-9fae-50f91fe68981&skoid=b928fb90-500a-412f-a661-1ece57a7c318&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-10-07T17%3A53%3A58Z&ske=2025-10-08T17%3A53%3A58Z&sks=b&skv=2024-08-04&sig=MoNOsdqjbO6Ub4BzeQvYgui8eZu/SNtUoQgLxxS%2BR4g%3D
-Subject: 
-Date: Tue, 7 Oct 2025 23:03:46 +0200
-MIME-Version: 1.0
-Content-Type: multipart/related;
-	type="text/html";
-	boundary="----MultipartBoundary--iqAWzrsoD1ac0kuL9QfsFuGecospy9uRoaOHOGc9De----"
-
-
-------MultipartBoundary--iqAWzrsoD1ac0kuL9QfsFuGecospy9uRoaOHOGc9De----
-Content-Type: text/html
-Content-ID: <frame-E6C7D05ACD4EB2E342571EE1AC483977@mhtml.blink>
-Content-Transfer-Encoding: quoted-printable
-Content-Location: https://sdmntprpolandcentral.oaiusercontent.com/files/00000000-20b8-620a-ada1-2b2732596508/raw?se=2025-10-07T21%3A08%3A28Z&sp=r&sv=2024-08-04&sr=b&scid=f90919a6-48e4-5c79-9fae-50f91fe68981&skoid=b928fb90-500a-412f-a661-1ece57a7c318&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-10-07T17%3A53%3A58Z&ske=2025-10-08T17%3A53%3A58Z&sks=b&skv=2024-08-04&sig=MoNOsdqjbO6Ub4BzeQvYgui8eZu/SNtUoQgLxxS%2BR4g%3D
-
-<html><head><meta http-equiv=3D"Content-Type" content=3D"text/html; charset=
-=3Dwindows-1252"><link rel=3D"stylesheet" type=3D"text/css" href=3D"cid:css=
--b184576f-6048-4262-a67b-88994c063112@mhtml.blink" /><meta name=3D"color-sc=
-heme" content=3D"light dark"></head><body><pre style=3D"word-wrap: break-wo=
-rd; white-space: pre-wrap;">{
+{
   "plugins": {
     "lualine.nvim": {
       "rev": "b8c2315",
@@ -49,12 +29,4 @@ rd; white-space: pre-wrap;">{
       "src": "https://github.com/folke/tokyonight.nvim"
     }
   }
-}</pre></body></html>
-------MultipartBoundary--iqAWzrsoD1ac0kuL9QfsFuGecospy9uRoaOHOGc9De----
-Content-Type: text/css
-Content-Transfer-Encoding: quoted-printable
-Content-Location: cid:css-b184576f-6048-4262-a67b-88994c063112@mhtml.blink
-
-@charset "windows-1252";
-=0A
-------MultipartBoundary--iqAWzrsoD1ac0kuL9QfsFuGecospy9uRoaOHOGc9De------
+}
