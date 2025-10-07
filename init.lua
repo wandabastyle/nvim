@@ -53,7 +53,7 @@ require "oil".setup({
 })
 vim.keymap.set('n', '<leader>e', ":Oil<CR>")
 
-vim.lsp.enable({ "lua_ls", "nil_ls" })
+vim.lsp.enable({ "lua_ls", "nixd" })
 vim.keymap.set('n', '<leader>lf', vim.lsp.buf.format)
 vim.o.completeopt = "menu,menuone,noinsert,noselect"
 
