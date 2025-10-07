@@ -54,6 +54,16 @@ require "oil".setup({
 vim.keymap.set('n', '<leader>e', ":Oil<CR>")
 
 vim.lsp.enable({ "lua_ls", "nixd" })
+vim.lsp.config["nixd"] = {
+	settings = {
+		nixd = {
+			formatting = { command = { "nixfmt" } },
+			nixpkgs = { expr = "import <nixpkgs> {}" },
+			options = { nixos = { expr = "(import <nixpkgs/nixos> { configuration = {}; }).options" } },
+		},
+	},
+}
+
 vim.keymap.set('n', '<leader>lf', vim.lsp.buf.format)
 vim.o.completeopt = "menu,menuone,noinsert,noselect"
 
