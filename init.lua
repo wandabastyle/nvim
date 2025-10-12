@@ -35,7 +35,10 @@ vim.pack.add({
 	{ src = "https://github.com/echasnovski/mini.pick" },
 	{ src = "https://github.com/echasnovski/mini.pairs" },
 	{ src = "https://github.com/stevearc/oil.nvim" },
+	{ src = "https://github.com/lewis6991/gitsigns.nvim" },
 })
+
+require "gitsigns".setup()
 
 require "mini.pick".setup()
 local pick = require("mini.pick").builtin
