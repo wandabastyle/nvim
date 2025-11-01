@@ -56,15 +56,24 @@ require "oil".setup({
 })
 vim.keymap.set('n', '<leader>e', ":Oil<CR>")
 
-vim.lsp.enable({ "lua_ls", "nixd" })
-vim.lsp.config["nixd"] = {
+vim.lsp.enable({ "lua_ls", "nil", "kdl-lsp" })
+
+vim.lsp.config["nil"] = {
+	cmd = { "nil" },
+	filetypes = { "nix" },
+	single_file_support = true,
 	settings = {
-		nixd = {
+		["nil"] = {
 			formatting = { command = { "nixfmt" } },
-			nixpkgs = { expr = "import <nixpkgs> {}" },
-			options = { nixos = { expr = "(import <nixpkgs/nixos> { configuration = {}; }).options" } },
 		},
 	},
+}
+
+vim.lsp.config["kdl-lsp"] = {
+	cmd = { "kdl-lsp"},
+	filetypes = { "kdl" },
+	root_markers = { ".git" },
+	single_file_support = true,
 }
 
 vim.keymap.set('n', '<leader>lf', vim.lsp.buf.format)
@@ -76,11 +85,38 @@ end
 
 vim.api.nvim_create_autocmd('LspAttach', {
 	callback = function(ev)
+		local buf = ev.buf
 		local client = vim.lsp.get_client_by_id(ev.data.client_id)
-		if client:supports_method('textDocument/completion') then
-			vim.lsp.completion.enable(true, client.id, ev.buf, { autotrigger = true })
+		-- enable LSP-powered completion
+		if client and client:supports_method('textDocument/completion') then
+			vim.lsp.completion.enable(true, client.id, buf, { autotrigger = true })
 		end
-	end,
+
+		-- small helper for buffer-local maps
+		local map = function(mode, lhs, rhs)
+			vim.keymap.set(mode, lhs, rhs, { buffer = buf, silent = true })
+		end
+
+		-- LSP maps
+		if client then
+			if client:supports_method('textDocument/definition') then
+				map("n", "gd", vim.lsp.buf.definition)
+			end
+			if client:supports_method('textDocument/hover') then
+				map("n", "K", vim.lsp.buf.hover)
+			end
+			if client:supports_method('textDocument/rename') then
+				map("n", "<leader>rn", vim.lsp.buf.rename)
+			end
+			if client:supports_method('textDocument/codeAction') then
+				map("n", "<leader>ca", vim.lsp.buf.code_action)
+			end
+		end
+		-- Diagnostics navigation doesn't depend on server capabilities
+    map("n", "[d", vim.diagnostic.goto_prev)
+    map("n", "]d", vim.diagnostic.goto_next)
+    map("n", "gl", vim.diagnostic.open_float) -- tooltip with diagnostics (optional)
+	end
 })
 vim.cmd("set completeopt+=noselect")
 
