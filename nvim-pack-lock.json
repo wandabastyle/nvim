@@ -1,5 +1,6 @@
 {
   "plugins": {
+    "gitsigns.nvim": [],
     "lualine.nvim": {
       "rev": "b8c2315",
       "src": "https://github.com/nvim-lualine/lualine.nvim"
@@ -12,9 +13,17 @@
       "rev": "96ee37d",
       "src": "https://github.com/echasnovski/mini.pick"
     },
+    "nvim-autopairs": {
+      "rev": "7a2c97c",
+      "src": "https://github.com/windwp/nvim-autopairs"
+    },
     "nvim-lspconfig": {
       "rev": "e688b48",
       "src": "https://github.com/neovim/nvim-lspconfig"
+    },
+    "nvim-treesitter": {
+      "rev": "42fc28ba",
+      "src": "https://github.com/nvim-treesitter/nvim-treesitter"
     },
     "nvim-web-devicons": {
       "rev": "b8221e4",
