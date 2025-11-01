@@ -54,6 +54,8 @@ require "nvim-autopairs".setup({
 })
 
 require "nvim-treesitter.configs".setup({
+	ensure_installed = { "lua", "nix", "kdl" },
+	auto_install = true,
 	highlight = { enable = true },
 	indent = { enable = true },
 })
