@@ -1,5 +1,9 @@
 {
   "plugins": {
+    "gitsigns.nvim": {
+      "rev": "20ad441",
+      "src": "https://github.com/lewis6991/gitsigns.nvim"
+    },
     "lualine.nvim": {
       "rev": "b8c2315",
       "src": "https://github.com/nvim-lualine/lualine.nvim"
