@@ -71,17 +71,17 @@ vim.api.nvim_create_autocmd("LspAttach", {
 		vim.keymap.set("n", "]d", vim.diagnostic.goto_next, opts)
 
 		if client:supports_method("textDocument/completion") then
-			local printable_ascii = {}
+			local identifier_chars = {}
 			for i = 32, 126 do
 				local char = string.char(i)
-				if char ~= ";" then
-					table.insert(printable_ascii, char)
+				if char:match("[%w_]") then
+					table.insert(identifier_chars, char)
 				end
 			end
 			-- Some servers only auto-trigger completion on specific characters. Expanding
-			-- triggerCharacters to printable ASCII helps identifier typing, but may be slower.
+			-- triggerCharacters to identifier-like ASCII avoids punctuation-triggered popups.
 			client.server_capabilities.completionProvider = client.server_capabilities.completionProvider or {}
-			client.server_capabilities.completionProvider.triggerCharacters = printable_ascii
+			client.server_capabilities.completionProvider.triggerCharacters = identifier_chars
 			vim.lsp.completion.enable(true, client.id, ev.buf, { autotrigger = true })
 		end
 	end,
