@@ -68,6 +68,14 @@ local function ensure_terminal_window()
 	})
 end
 
+local function restore_window(win)
+	if win and vim.api.nvim_win_is_valid(win) then
+		vim.api.nvim_set_current_win(win)
+		return true
+	end
+	return false
+end
+
 function M.run(mode)
 	local cmd, cwd, err = project_command(mode)
 	if not cmd then
@@ -75,6 +83,7 @@ function M.run(mode)
 		return
 	end
 
+	local prev_win = vim.api.nvim_get_current_win()
 	ensure_terminal_window()
 
 	local job = M.state.buf and vim.b[M.state.buf].terminal_job_id or nil
@@ -84,7 +93,15 @@ function M.run(mode)
 	end
 
 	vim.fn.chansend(job, ("cd %s && %s\n"):format(vim.fn.shellescape(cwd), cmd))
-	vim.cmd("startinsert")
+	restore_window(prev_win)
+end
+
+function M.focus()
+	ensure_terminal_window()
+	if M.state.win and vim.api.nvim_win_is_valid(M.state.win) then
+		vim.api.nvim_set_current_win(M.state.win)
+		vim.cmd("startinsert")
+	end
 end
 
 function M.close()
