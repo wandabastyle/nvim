@@ -28,7 +28,7 @@ local function rust_open_brace()
 	local after = line:sub(col + 1)
 
 	if should_expand_rust_block(before, after) then
-		return "{<CR>"
+		return "{<CR>}<Esc>O"
 	end
 
 	return "{"
