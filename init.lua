@@ -84,6 +84,7 @@ vim.lsp.config["pylsp"] = {
 
 vim.keymap.set('n', '<leader>lf', vim.lsp.buf.format)
 vim.o.completeopt = "menu,menuone,noinsert,noselect"
+vim.keymap.set("i", "<C-Space>", function() vim.lsp.completion.get() end, { silent = true, desc = "Trigger LSP completion" })
 
 for k, v in pairs({ ["<Tab>"] = { "<C-n>", "<Tab>" }, ["<S-Tab>"] = { "<C-p>", "<S-Tab>" }, ["<CR>"] = { "<C-y>", "<CR>" } }) do
 	vim.keymap.set("i", k, function() return vim.fn.pumvisible() == 1 and v[1] or v[2] end, { expr = true, silent = true })

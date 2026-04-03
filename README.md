@@ -45,6 +45,8 @@ This repository contains a minimal Lua-based Neovim setup focused on:
 - Built-in Neovim LSP with:
   - `lua_ls` (Lua language server)
   - `nixd` (Nix language server)
+  - `rust_analyzer` (Rust language server)
+  - `pylsp` (Python language server)
 - Nix formatting via `nixfmt` (configured through `nixd`)
 
 ---
@@ -55,14 +57,17 @@ Install Neovim and command-line tools used by this config:
 
 ```bash
 yay -S --needed \
-  neovim git ripgrep fd lua-language-server nixd nixfmt
+  neovim git ripgrep fd \
+  lua-language-server nixd nixfmt \
+  rust-analyzer python-lsp-server python-lsp-black
 ```
 
 ### Notes
 
 - `ripgrep` is used by `mini.pick.grep`.
 - `fd` is commonly used by modern pickers/file tools and is recommended.
-- `lua-language-server` and `nixd` are required for LSP support for Lua and Nix.
+- `lua-language-server`, `nixd`, `rust-analyzer`, and `python-lsp-server` are required for LSP support for Lua, Nix, Rust, and Python.
+- `python-lsp-black` enables the configured Black formatter plugin inside `pylsp`.
 - `nixfmt` is used by the Nix LSP formatting configuration.
 - For file icons to render correctly, use a **Nerd Font** in your terminal.
 
@@ -138,6 +143,13 @@ When an LSP server attaches, an `LspAttach` autocmd runs. If the server supports
 - `vim.lsp.completion.enable(true, client.id, ev.buf, { autotrigger = true })`
 
 `autotrigger = true` means completion suggestions can appear automatically as you type.
+Some servers (including `rust_analyzer` in many contexts) still prefer triggering on
+specific characters/patterns, so a plain word prefix like `print` may not always pop
+up suggestions immediately.
+
+You can always force a completion request with:
+
+- `<C-Space>` in insert mode
 
 ### 2) Completion popup behavior (`completeopt`)
 
@@ -177,7 +189,8 @@ This gives a lightweight completion flow with no extra completion plugin.
    nvim
    ```
 3. Let plugins sync/install the first time.
-4. Open a Lua or Nix file and test:
+4. Open a Lua, Nix, Rust, or Python file and test:
    - completion while typing,
+   - manual completion with `<C-Space>` (useful when a server does not auto-trigger on plain letters),
    - `<leader>lf` formatting,
    - picker mappings (`<leader>ff`, `<leader>fg`).
