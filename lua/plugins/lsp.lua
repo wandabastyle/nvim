@@ -30,9 +30,17 @@ vim.keymap.set("n", "<leader>lf", vim.lsp.buf.format)
 vim.keymap.set("i", "<C-Space>", function() vim.lsp.completion.get() end,
 	{ silent = true, desc = "Trigger LSP completion" })
 
-for k, v in pairs({ ["<Tab>"] = { "<C-n>", "<Tab>" }, ["<S-Tab>"] = { "<C-p>", "<S-Tab>" }, ["<CR>"] = { "<C-y>", "<CR>" } }) do
+for k, v in pairs({ ["<Tab>"] = { "<C-n>", "<Tab>" }, ["<S-Tab>"] = { "<C-p>", "<S-Tab>" } }) do
 	vim.keymap.set("i", k, function() return vim.fn.pumvisible() == 1 and v[1] or v[2] end, { expr = true, silent = true })
 end
+
+vim.keymap.set("i", "<CR>", function()
+	if vim.fn.pumvisible() == 1 then
+		return "<C-y>"
+	end
+
+	return require("nvim-autopairs").autopairs_cr()
+end, { expr = true, silent = true, desc = "Confirm completion or autopairs newline" })
 
 vim.api.nvim_create_autocmd("LspAttach", {
 	callback = function(ev)
