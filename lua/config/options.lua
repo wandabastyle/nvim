@@ -13,6 +13,7 @@ vim.o.softtabstop = 2
 vim.o.smartindent = true
 vim.o.autoindent = true
 vim.o.wrap = false
+vim.o.scrolloff = 5
 
 vim.o.completeopt = "menu,menuone,noinsert,noselect"
 vim.cmd("set completeopt+=noselect")
