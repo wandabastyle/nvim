@@ -16,7 +16,7 @@ This repository contains a minimal Lua Neovim setup with modular config files, b
 - `lua/features/project_terminal.lua` — reusable Neovim terminal split workflow
 - `lua/plugins/init.lua` — plugin install list via `vim.pack.add`
 - `lua/plugins/ui.lua` — colorscheme/UI/picker/oil/gitsigns setup
-- `lua/plugins/editing.lua` — autopairs + Rust editing helper
+- `lua/plugins/editing.lua` — autopairs + optional `nvim-cmp` integration hook
 - `lua/plugins/lsp.lua` — LSP server setup, completion mappings, `LspAttach`
 
 ## Plugins
@@ -59,13 +59,24 @@ Default mappings:
 - `<leader>rc` → close project terminal window
 - `<leader>rt` → focus project terminal window (enters terminal insert mode)
 
-## Rust editing enhancement
+## Consistent Enter behavior in braces
 
-`nvim-autopairs` provides general pairing behavior.
+`nvim-autopairs` handles newline splitting between pairs like `{|}` when pressing `<CR>`.
 
-For Rust buffers only, typing `{` after common block starters (for example `fn ...()`, `if ...`, `match ...`, `impl ...`, `for ...`, `while ...`, `loop`, `else`) expands immediately into a block shape using newline insertion and indentation.
+This config routes insert-mode `<CR>` through a single mapping:
 
-This helper is scoped to Rust filetypes so pairing behavior for other languages remains unchanged.
+- popup menu visible (`pumvisible() == 1`) → confirm completion (`<C-y>`)
+- popup menu hidden → run `require("nvim-autopairs").autopairs_cr()`
+
+This keeps brace newline behavior consistent across languages (Rust, C/C++, JavaScript, etc.) while preserving completion confirmation behavior.
+
+`nvim-autopairs` is configured with:
+
+- `check_ts = true` for Treesitter-aware pairing behavior
+- `enable_check_bracket_line = false` so `<CR>` can still split `{|}` in common inline cases
+
+If `hrsh7th/nvim-cmp` is installed later, `lua/plugins/editing.lua` auto-hooks
+`cmp.event:on("confirm_done", ...)` to keep completion-confirm pair insertion working.
 
 ## LSP and completion
 
