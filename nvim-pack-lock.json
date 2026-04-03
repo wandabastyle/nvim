@@ -1,0 +1,40 @@
+{
+  "plugins": {
+    "gitsigns.nvim": {
+      "rev": "20ad441",
+      "src": "https://github.com/lewis6991/gitsigns.nvim"
+    },
+    "lualine.nvim": {
+      "rev": "b8c2315",
+      "src": "https://github.com/nvim-lualine/lualine.nvim"
+    },
+    "mini.pairs": {
+      "rev": "b9aada8",
+      "src": "https://github.com/echasnovski/mini.pairs"
+    },
+    "mini.pick": {
+      "rev": "96ee37d",
+      "src": "https://github.com/echasnovski/mini.pick"
+    },
+    "nvim-autopairs": {
+      "rev": "59bce2eef357189c3305e25bc6dd2d138c1683f5",
+      "src": "https://github.com/windwp/nvim-autopairs"
+    },
+    "nvim-lspconfig": {
+      "rev": "e688b48",
+      "src": "https://github.com/neovim/nvim-lspconfig"
+    },
+    "nvim-web-devicons": {
+      "rev": "b8221e4",
+      "src": "https://github.com/nvim-tree/nvim-web-devicons"
+    },
+    "oil.nvim": {
+      "rev": "919e155",
+      "src": "https://github.com/stevearc/oil.nvim"
+    },
+    "tokyonight.nvim": {
+      "rev": "4d15961",
+      "src": "https://github.com/folke/tokyonight.nvim"
+    }
+  }
+}
