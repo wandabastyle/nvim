@@ -51,19 +51,42 @@ This repository contains a minimal Lua-based Neovim setup focused on:
 
 ---
 
+## Neovim version requirement
+
+This config currently targets **Neovim 0.13.x** APIs.
+
+- As of now, Neovim **0.12.x** is the stable release line.
+- Treat **0.13.x** as nightly/pre-release for now.
+- If you run this config on 0.12, you may hit missing API errors (for example around newer built-in LSP/completion behavior).
+
+### Install/update guidance for 0.13.x (nightly)
+
+Use a package/build that explicitly tracks nightly (0.13.x), then verify:
+
+```bash
+nvim --version
+```
+
+You should see a `v0.13` version string in the first line.
+
+If your package manager only ships 0.12 stable, install a nightly channel/package (often named `neovim-nightly`) or build Neovim from source and keep it updated.
+
+---
+
 ## Manual install on Arch Linux (with `yay`)
 
-Install Neovim and command-line tools used by this config:
+Install Neovim nightly (0.13.x) and command-line tools used by this config:
 
 ```bash
 yay -S --needed \
-  neovim git ripgrep fd \
+  neovim-nightly-bin git ripgrep fd \
   lua-language-server nixd nixfmt \
   rust-analyzer python-lsp-server python-lsp-black
 ```
 
 ### Notes
 
+- Use a nightly package (`neovim-nightly-bin`) so you are on Neovim 0.13.x APIs.
 - `ripgrep` is used by `mini.pick.grep`.
 - `fd` is commonly used by modern pickers/file tools and is recommended.
 - `lua-language-server`, `nixd`, `rust-analyzer`, and `python-lsp-server` are required for LSP support for Lua, Nix, Rust, and Python.
@@ -143,9 +166,10 @@ When an LSP server attaches, an `LspAttach` autocmd runs. If the server supports
 - `vim.lsp.completion.enable(true, client.id, ev.buf, { autotrigger = true })`
 
 `autotrigger = true` means completion suggestions can appear automatically as you type.
-Some servers (including `rust_analyzer` in many contexts) still prefer triggering on
-specific characters/patterns, so a plain word prefix like `print` may not always pop
-up suggestions immediately.
+This config also broadens LSP `triggerCharacters` to printable ASCII so normal identifier
+typing (letters/numbers/symbols) can auto-trigger completion more consistently.
+
+This can be a little slower on some servers, so `<C-Space>` remains a manual fallback.
 
 You can always force a completion request with:
 
@@ -191,6 +215,6 @@ This gives a lightweight completion flow with no extra completion plugin.
 3. Let plugins sync/install the first time.
 4. Open a Lua, Nix, Rust, or Python file and test:
    - completion while typing,
-   - manual completion with `<C-Space>` (useful when a server does not auto-trigger on plain letters),
+   - manual completion with `<C-Space>` (fallback if auto-trigger feels slow or misses in edge cases),
    - `<leader>lf` formatting,
    - picker mappings (`<leader>ff`, `<leader>fg`).

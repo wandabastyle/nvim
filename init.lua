@@ -105,6 +105,14 @@ vim.api.nvim_create_autocmd('LspAttach', {
 		vim.keymap.set("n", "]d", vim.diagnostic.goto_next, opts)
 
 		if client:supports_method('textDocument/completion') then
+			local printable_ascii = {}
+			for i = 32, 126 do
+				table.insert(printable_ascii, string.char(i))
+			end
+			-- Some servers only auto-trigger completion on specific characters. Expanding
+			-- triggerCharacters to printable ASCII helps identifier typing, but may be slower.
+			client.server_capabilities.completionProvider = client.server_capabilities.completionProvider or {}
+			client.server_capabilities.completionProvider.triggerCharacters = printable_ascii
 			vim.lsp.completion.enable(true, client.id, ev.buf, { autotrigger = true })
 		end
 	end,
