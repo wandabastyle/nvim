@@ -35,12 +35,16 @@ for k, v in pairs({
 	["<S-Tab>"] = { complete = "<C-p>", fallback = "<S-Tab>", direction = -1 },
 }) do
 	vim.keymap.set({ "i", "s" }, k, function()
+		if vim.fn.pumvisible() == 1 then
+			return v.complete
+		end
+
 		if vim.snippet.active({ direction = v.direction }) then
 			vim.snippet.jump(v.direction)
 			return ""
 		end
 
-		return vim.fn.pumvisible() == 1 and v.complete or v.fallback
+		return v.fallback
 	end, { expr = true, silent = true })
 end
 
