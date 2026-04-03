@@ -50,7 +50,7 @@ end
 
 vim.keymap.set("i", "<CR>", function()
 	if vim.fn.pumvisible() == 1 then
-		return "<C-y>"
+		return vim.api.nvim_replace_termcodes("<C-y>", true, true, true)
 	end
 
 	return require("nvim-autopairs").autopairs_cr()
