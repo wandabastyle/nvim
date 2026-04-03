@@ -40,6 +40,13 @@ This repository contains a minimal Lua-based Neovim setup focused on:
 
 - **gitsigns.nvim** for inline Git hunk signs/actions
 
+### Project run/build terminal
+
+- Built-in project-aware `:ProjectRun` and `:ProjectBuild` commands
+- Reusable horizontal terminal split (height 12) for build/run output
+- Rust projects (`Cargo.toml`) run with `cargo run` and build with `cargo build`
+- Python files run with `python <current-file>`
+
 ### Language support
 
 - Built-in Neovim LSP with:
@@ -121,6 +128,8 @@ Leader key is set to **Space**.
 - `<leader>q` → Quit window
 - `<leader>y` (normal/visual/select) → Yank to system clipboard
 - `<leader>d` (normal/visual/select) → Delete to system clipboard
+- `<leader>rr` → Run current project/file (`:ProjectRun`)
+- `<leader>rb` → Build current project (`:ProjectBuild`)
 
 ### Line movement
 
@@ -141,6 +150,14 @@ Leader key is set to **Space**.
 ### File explorer (`oil.nvim`)
 
 - `<leader>e` → Open Oil file explorer
+
+### Build / run terminal
+
+- `:ProjectRun` → Run current project/file in reusable horizontal terminal split
+- `:ProjectBuild` → Build current project in reusable horizontal terminal split
+- In the project terminal:
+  - `q` (normal mode) → Close split
+  - `<C-q>` (terminal mode) → Close split
 
 ### LSP
 
@@ -217,4 +234,5 @@ This gives a lightweight completion flow with no extra completion plugin.
    - completion while typing,
    - manual completion with `<C-Space>` (fallback if auto-trigger feels slow or misses in edge cases),
    - `<leader>lf` formatting,
-   - picker mappings (`<leader>ff`, `<leader>fg`).
+   - picker mappings (`<leader>ff`, `<leader>fg`),
+   - project run/build (`<leader>rr`, `<leader>rb`).
