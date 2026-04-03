@@ -91,7 +91,7 @@ Behavior kept from previous config:
 
 - `LspAttach` buffer-local mappings (`K`, `gd`, `gr`, diagnostics, rename/code actions)
 - manual completion trigger: `<C-Space>`
-- aggressive auto-trigger completion by widening trigger characters to printable ASCII
+- auto-trigger completion uses each language server's default trigger characters
 - popup control mappings in insert mode:
   - `<Tab>` / `<S-Tab>` navigate popup when visible
   - `<CR>` confirms popup selection when visible

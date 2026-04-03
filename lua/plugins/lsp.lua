@@ -50,7 +50,12 @@ end
 
 vim.keymap.set("i", "<CR>", function()
 	if vim.fn.pumvisible() == 1 then
-		return "<C-y>"
+		local selected = vim.fn.complete_info({ "selected" }).selected
+		if selected ~= -1 then
+			return "<C-y>"
+		end
+
+		return require("nvim-autopairs").autopairs_cr()
 	end
 
 	return require("nvim-autopairs").autopairs_cr()
@@ -71,17 +76,6 @@ vim.api.nvim_create_autocmd("LspAttach", {
 		vim.keymap.set("n", "]d", vim.diagnostic.goto_next, opts)
 
 		if client:supports_method("textDocument/completion") then
-			local identifier_chars = {}
-			for i = 32, 126 do
-				local char = string.char(i)
-				if char:match("[%w_]") then
-					table.insert(identifier_chars, char)
-				end
-			end
-			-- Some servers only auto-trigger completion on specific characters. Expanding
-			-- triggerCharacters to identifier-like ASCII avoids punctuation-triggered popups.
-			client.server_capabilities.completionProvider = client.server_capabilities.completionProvider or {}
-			client.server_capabilities.completionProvider.triggerCharacters = identifier_chars
 			vim.lsp.completion.enable(true, client.id, ev.buf, { autotrigger = true })
 		end
 	end,
