@@ -30,8 +30,18 @@ vim.keymap.set("n", "<leader>lf", vim.lsp.buf.format)
 vim.keymap.set("i", "<C-Space>", function() vim.lsp.completion.get() end,
 	{ silent = true, desc = "Trigger LSP completion" })
 
-for k, v in pairs({ ["<Tab>"] = { "<C-n>", "<Tab>" }, ["<S-Tab>"] = { "<C-p>", "<S-Tab>" } }) do
-	vim.keymap.set("i", k, function() return vim.fn.pumvisible() == 1 and v[1] or v[2] end, { expr = true, silent = true })
+for k, v in pairs({
+	["<Tab>"] = { complete = "<C-n>", fallback = "<Tab>", direction = 1 },
+	["<S-Tab>"] = { complete = "<C-p>", fallback = "<S-Tab>", direction = -1 },
+}) do
+	vim.keymap.set({ "i", "s" }, k, function()
+		if vim.snippet.active({ direction = v.direction }) then
+			vim.snippet.jump(v.direction)
+			return ""
+		end
+
+		return vim.fn.pumvisible() == 1 and v.complete or v.fallback
+	end, { expr = true, silent = true })
 end
 
 vim.keymap.set("i", "<CR>", function()
