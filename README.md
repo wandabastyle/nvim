@@ -39,6 +39,7 @@ Installed with `vim.pack.add`:
   - `:ProjectBuild`
 - Opens a **bottom horizontal split** terminal (height 12) using Neovim's built-in terminal.
 - Reuses the same terminal buffer/window when possible.
+- `:ProjectRun` / `:ProjectBuild` sends commands to the project terminal and then restores focus to the previously active editing window.
 - Terminal close mappings:
   - `q` in normal mode
   - `<C-q>` in terminal mode
@@ -55,6 +56,8 @@ Default mappings:
 
 - `<leader>rr` → `:ProjectRun`
 - `<leader>rb` → `:ProjectBuild`
+- `<leader>rc` → close project terminal window
+- `<leader>rt` → focus project terminal window (enters terminal insert mode)
 
 ## Rust editing enhancement
 
