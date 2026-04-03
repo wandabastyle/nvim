@@ -14,5 +14,4 @@ vim.o.smartindent = true
 vim.o.autoindent = true
 vim.o.wrap = false
 
-vim.o.completeopt = "menu,menuone,noinsert,noselect"
-vim.cmd("set completeopt+=noselect")
+vim.o.completeopt = "menuone,noinsert,noselect,popup"

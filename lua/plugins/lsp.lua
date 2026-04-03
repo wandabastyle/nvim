@@ -52,6 +52,31 @@ vim.keymap.set("i", "<CR>",
 	[[pumvisible() ? (complete_info(['selected']).selected != -1 ? "\<C-y>" : "\<C-e>" . v:lua.require'nvim-autopairs'.autopairs_cr()) : v:lua.require'nvim-autopairs'.autopairs_cr()]],
 	{ expr = true, replace_keycodes = false, silent = true, desc = "Confirm completion or autopairs newline" })
 
+local function completion_trigger_chars(client)
+	local chars = {}
+
+	if client.server_capabilities
+		and client.server_capabilities.completionProvider
+		and client.server_capabilities.completionProvider.triggerCharacters
+	then
+		for _, ch in ipairs(client.server_capabilities.completionProvider.triggerCharacters) do
+			chars[ch] = true
+		end
+	end
+
+	-- Make builtin completion feel responsive during normal identifier typing.
+	for ch in ("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"):gmatch(".") do
+		chars[ch] = true
+	end
+
+	local merged = {}
+	for ch, _ in pairs(chars) do
+		table.insert(merged, ch)
+	end
+
+	return merged
+end
+
 vim.api.nvim_create_autocmd("LspAttach", {
 	callback = function(ev)
 		local client = vim.lsp.get_client_by_id(ev.data.client_id)
@@ -67,7 +92,10 @@ vim.api.nvim_create_autocmd("LspAttach", {
 		vim.keymap.set("n", "]d", vim.diagnostic.goto_next, opts)
 
 		if client:supports_method("textDocument/completion") then
-			vim.lsp.completion.enable(true, client.id, ev.buf, { autotrigger = true })
+			vim.lsp.completion.enable(true, client.id, ev.buf, {
+				autotrigger = true,
+				triggerCharacters = completion_trigger_chars(client),
+			})
 		end
 	end,
 })
