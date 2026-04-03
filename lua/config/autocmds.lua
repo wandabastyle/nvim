@@ -1,0 +1,1 @@
+-- Reserved for non-plugin global autocommands.
