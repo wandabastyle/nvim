@@ -49,16 +49,18 @@ for k, v in pairs({
 end
 
 vim.keymap.set("i", "<CR>", function()
+	local autopairs = require("nvim-autopairs")
+
 	if vim.fn.pumvisible() == 1 then
 		local selected = vim.fn.complete_info({ "selected" }).selected
 		if selected ~= -1 then
 			return "<C-y>"
 		end
 
-		return require("nvim-autopairs").autopairs_cr()
+		return "<C-e>" .. autopairs.autopairs_cr()
 	end
 
-	return require("nvim-autopairs").autopairs_cr()
+	return autopairs.autopairs_cr()
 end, { expr = true, silent = true, desc = "Confirm completion or autopairs newline" })
 
 vim.api.nvim_create_autocmd("LspAttach", {
