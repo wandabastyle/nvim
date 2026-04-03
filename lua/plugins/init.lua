@@ -7,4 +7,5 @@ vim.pack.add({
 	{ src = "https://github.com/stevearc/oil.nvim" },
 	{ src = "https://github.com/lewis6991/gitsigns.nvim" },
 	{ src = "https://github.com/windwp/nvim-autopairs" },
+	{ src = "https://github.com/ethanholz/nvim-lastplace" },
 })
