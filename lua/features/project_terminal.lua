@@ -87,6 +87,12 @@ function M.run(mode)
 	vim.cmd("startinsert")
 end
 
+function M.close()
+	if M.state.win and vim.api.nvim_win_is_valid(M.state.win) then
+		vim.api.nvim_win_close(M.state.win, true)
+	end
+end
+
 function M.setup()
 	vim.api.nvim_create_autocmd("TermClose", {
 		callback = function(ev)
