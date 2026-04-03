@@ -50,7 +50,7 @@ end
 
 vim.keymap.set("i", "<CR>",
 	[[pumvisible() ? (complete_info(['selected']).selected != -1 ? "\<C-y>" : "\<C-e>" . v:lua.require'nvim-autopairs'.autopairs_cr()) : v:lua.require'nvim-autopairs'.autopairs_cr()]],
-	{ expr = true, silent = true, desc = "Confirm completion or autopairs newline" })
+	{ expr = true, replace_keycodes = false, silent = true, desc = "Confirm completion or autopairs newline" })
 
 vim.api.nvim_create_autocmd("LspAttach", {
 	callback = function(ev)
