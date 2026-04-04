@@ -86,6 +86,19 @@ Built-in Neovim LSP (no `nvim-cmp`) with:
 - `nixd`
 - `rust_analyzer`
 - `pylsp`
+- `ts_ls` (TypeScript/JavaScript)
+
+### TypeScript LSP server install (`ts_ls`)
+
+`ts_ls` in `nvim-lspconfig` uses the `typescript-language-server` binary (plus TypeScript/tsserver).
+
+On Arch Linux (including `yay`-based installs), install:
+
+```bash
+yay -S typescript typescript-language-server
+```
+
+Then restart Neovim and open a `.ts`, `.tsx`, `.js`, or `.jsx` file to attach the server.
 
 Behavior kept from previous config:
 
