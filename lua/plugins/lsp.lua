@@ -24,7 +24,9 @@ vim.lsp.config["pylsp"] = {
 	},
 }
 
-vim.lsp.enable({ "lua_ls", "nixd", "rust_analyzer", "pylsp" })
+vim.lsp.config["ts_ls"] = {}
+
+vim.lsp.enable({ "lua_ls", "nixd", "rust_analyzer", "pylsp", "ts_ls" })
 
 vim.keymap.set("n", "<leader>lf", vim.lsp.buf.format)
 vim.keymap.set("i", "<C-Space>", function() vim.lsp.completion.get() end,

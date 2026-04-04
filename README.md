@@ -86,6 +86,7 @@ Built-in Neovim LSP (no `nvim-cmp`) with:
 - `nixd`
 - `rust_analyzer`
 - `pylsp`
+- `ts_ls` (TypeScript/JavaScript)
 
 Behavior kept from previous config:
 
