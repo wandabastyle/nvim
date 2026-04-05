@@ -1,101 +1,165 @@
-vim.lsp.config["nixd"] = {
-	settings = {
-		nixd = {
-			formatting = { command = { "nixfmt" } },
-			nixpkgs = { expr = "import <nixpkgs> {}" },
-			options = { nixos = { expr = "(import <nixpkgs/nixos> { configuration = {}; }).options" } },
-		},
-	},
+return {
+  {
+    "williamboman/mason.nvim",
+    cmd = "Mason",
+    opts = {},
+  },
+  {
+    "williamboman/mason-lspconfig.nvim",
+    dependencies = {
+      "williamboman/mason.nvim",
+      "neovim/nvim-lspconfig",
+    },
+    opts = {
+      ensure_installed = {
+        "lua_ls",
+        "nixd",
+        "rust_analyzer",
+        "pyright",
+        "ts_ls",
+      },
+      automatic_installation = true,
+    },
+  },
+  {
+    "hrsh7th/nvim-cmp",
+    event = "InsertEnter",
+    dependencies = {
+      "hrsh7th/cmp-nvim-lsp",
+      "hrsh7th/cmp-buffer",
+      "hrsh7th/cmp-path",
+      "L3MON4D3/LuaSnip",
+      "saadparwaiz1/cmp_luasnip",
+      "rafamadriz/friendly-snippets",
+    },
+    config = function()
+      local cmp = require("cmp")
+      local luasnip = require("luasnip")
+
+      require("luasnip.loaders.from_vscode").lazy_load()
+
+      cmp.setup({
+        snippet = {
+          expand = function(args)
+            luasnip.lsp_expand(args.body)
+          end,
+        },
+        mapping = cmp.mapping.preset.insert({
+          ["<C-Space>"] = cmp.mapping.complete(),
+          ["<C-e>"] = cmp.mapping.abort(),
+          ["<CR>"] = cmp.mapping(function(fallback)
+            if cmp.visible() then
+              cmp.confirm({ select = true })
+            else
+              fallback()
+            end
+          end, { "i", "s" }),
+          ["<Tab>"] = cmp.mapping(function(fallback)
+            if cmp.visible() then
+              cmp.select_next_item()
+            elseif luasnip.expand_or_jumpable() then
+              luasnip.expand_or_jump()
+            else
+              fallback()
+            end
+          end, { "i", "s" }),
+          ["<S-Tab>"] = cmp.mapping(function(fallback)
+            if cmp.visible() then
+              cmp.select_prev_item()
+            elseif luasnip.jumpable(-1) then
+              luasnip.jump(-1)
+            else
+              fallback()
+            end
+          end, { "i", "s" }),
+        }),
+        sources = cmp.config.sources({
+          { name = "nvim_lsp" },
+          { name = "luasnip" },
+          { name = "path" },
+          { name = "buffer" },
+        }),
+      })
+    end,
+  },
+  {
+    "neovim/nvim-lspconfig",
+    event = { "BufReadPre", "BufNewFile" },
+    dependencies = {
+      "hrsh7th/cmp-nvim-lsp",
+      "williamboman/mason-lspconfig.nvim",
+      "windwp/nvim-autopairs",
+    },
+    config = function()
+      local lspconfig = require("lspconfig")
+      local cmp_lsp = require("cmp_nvim_lsp")
+      local capabilities = cmp_lsp.default_capabilities()
+
+      vim.diagnostic.config({
+        virtual_text = true,
+        severity_sort = true,
+        float = { border = "rounded" },
+      })
+
+      local on_attach = function(_, bufnr)
+        local map = function(mode, lhs, rhs, desc)
+          vim.keymap.set(mode, lhs, rhs, { buffer = bufnr, silent = true, desc = desc })
+        end
+
+        map("n", "K", vim.lsp.buf.hover, "Hover")
+        map("n", "gd", vim.lsp.buf.definition, "Go to definition")
+        map("n", "gD", vim.lsp.buf.declaration, "Go to declaration")
+        map("n", "gi", vim.lsp.buf.implementation, "Go to implementation")
+        map("n", "gr", vim.lsp.buf.references, "References")
+        map("n", "<leader>lr", vim.lsp.buf.rename, "Rename")
+        map("n", "<leader>la", vim.lsp.buf.code_action, "Code action")
+        map("n", "<leader>lf", function()
+          vim.lsp.buf.format({ async = true })
+        end, "Format")
+        map("n", "<leader>ld", vim.diagnostic.open_float, "Line diagnostics")
+        map("n", "[d", vim.diagnostic.goto_prev, "Previous diagnostic")
+        map("n", "]d", vim.diagnostic.goto_next, "Next diagnostic")
+      end
+
+      lspconfig.lua_ls.setup({
+        capabilities = capabilities,
+        on_attach = on_attach,
+        settings = {
+          Lua = {
+            diagnostics = { globals = { "vim" } },
+            workspace = { checkThirdParty = false },
+            hint = { enable = true },
+          },
+        },
+      })
+
+      lspconfig.nixd.setup({
+        capabilities = capabilities,
+        on_attach = on_attach,
+        settings = {
+          nixd = {
+            formatting = { command = { "nixfmt" } },
+          },
+        },
+      })
+
+      lspconfig.rust_analyzer.setup({
+        capabilities = capabilities,
+        on_attach = on_attach,
+      })
+
+      lspconfig.pyright.setup({
+        capabilities = capabilities,
+        on_attach = on_attach,
+      })
+
+      lspconfig.ts_ls.setup({
+        capabilities = capabilities,
+        on_attach = on_attach,
+      })
+
+      local cmp_autopairs = require("nvim-autopairs.completion.cmp")
+      require("cmp").event:on("confirm_done", cmp_autopairs.on_confirm_done())
+    end,
+  },
 }
-
-vim.lsp.config["pylsp"] = {
-	settings = {
-		pylsp = {
-			plugins = {
-				pycodestyle = { enabled = false },
-				mccabe = { enabled = false },
-				pyflakes = { enabled = false },
-				autopep8 = { enabled = false },
-				yapf = { enabled = false },
-				black = { enabled = true },
-				pylsp_mypy = { enabled = false },
-			},
-		},
-	},
-}
-
-vim.lsp.config["ts_ls"] = {}
-
-vim.lsp.enable({ "lua_ls", "nixd", "rust_analyzer", "pylsp", "ts_ls" })
-
-vim.keymap.set("n", "<leader>lf", vim.lsp.buf.format)
-vim.keymap.set("i", "<C-Space>", function() vim.lsp.completion.get() end,
-	{ silent = true, desc = "Trigger LSP completion" })
-
-for k, v in pairs({
-	["<Tab>"] = { complete = "<C-n>", fallback = "<Tab>", direction = 1 },
-	["<S-Tab>"] = { complete = "<C-p>", fallback = "<S-Tab>", direction = -1 },
-}) do
-	vim.keymap.set({ "i", "s" }, k, function()
-		if vim.fn.pumvisible() == 1 then
-			return v.complete
-		end
-
-		if vim.snippet.active({ direction = v.direction }) then
-			vim.snippet.jump(v.direction)
-			return ""
-		end
-
-		return v.fallback
-	end, { expr = true, silent = true })
-end
-
-local autopairs = require("nvim-autopairs")
-
-vim.keymap.set("i", "<CR>", function()
-	if vim.fn.pumvisible() == 1 then
-		if vim.fn.complete_info({ "selected" }).selected ~= -1 then
-			return vim.api.nvim_replace_termcodes("<C-y>", true, true, true)
-		end
-
-		return vim.api.nvim_replace_termcodes("<C-e>", true, true, true) .. autopairs.autopairs_cr()
-	end
-
-	return autopairs.autopairs_cr()
-end, { expr = true, replace_keycodes = false, silent = true, desc = "Confirm completion or autopairs newline" })
-
-vim.api.nvim_create_autocmd("LspAttach", {
-	callback = function(ev)
-		local client = vim.lsp.get_client_by_id(ev.data.client_id)
-		local opts = { buffer = ev.buf }
-
-		vim.keymap.set("n", "K", vim.lsp.buf.hover, opts)
-		vim.keymap.set("n", "gd", vim.lsp.buf.definition, opts)
-		vim.keymap.set("n", "gr", vim.lsp.buf.references, opts)
-		vim.keymap.set("n", "<leader>lr", vim.lsp.buf.rename, opts)
-		vim.keymap.set("n", "<leader>la", vim.lsp.buf.code_action, opts)
-		vim.keymap.set("n", "<leader>ld", vim.diagnostic.open_float, opts)
-		vim.keymap.set("n", "[d", vim.diagnostic.goto_prev, opts)
-		vim.keymap.set("n", "]d", vim.diagnostic.goto_next, opts)
-
-		if client:supports_method("textDocument/completion") then
-			local identifier_chars = {}
-			for i = 32, 126 do
-				local char = string.char(i)
-				if char:match("[%w_]") then
-					table.insert(identifier_chars, char)
-				end
-			end
-			-- Some servers only auto-trigger completion on specific characters. Expanding
-			-- triggerCharacters to identifier-like ASCII avoids punctuation-triggered popups.
-			client.server_capabilities.completionProvider = client.server_capabilities.completionProvider or {}
-			client.server_capabilities.completionProvider.triggerCharacters = identifier_chars
-			vim.lsp.completion.enable(true, client.id, ev.buf, { autotrigger = true })
-		end
-
-		if client:supports_method("textDocument/semanticTokens/full")
-			or client:supports_method("textDocument/semanticTokens/range") then
-			vim.lsp.semantic_tokens.start(ev.buf, client.id)
-		end
-	end,
-})

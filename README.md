@@ -1,120 +1,226 @@
-# Neovim Config
+# Neovim config (0.11 stable)
 
-> [!WARNING]
-> This config targets **Neovim 0.13.x** APIs (nightly/pre-release at the time of writing).
-> Older versions (including 0.12.x stable) can fail with missing API errors.
+A clean Neovim rebuild focused on stable APIs and predictable behavior.
 
-This repository contains a minimal Lua Neovim setup with modular config files, built-in LSP/completion, and a reusable in-editor run/build terminal workflow.
+- **Neovim target**: `0.11.x` stable
+- **Plugin manager**: `lazy.nvim`
+- **Theme**: `tokyonight-moon`
+- **Style**: minimal, readable, modular, easy to extend
 
-## Structure
+---
 
-- `init.lua` — bootstrap + module loading only
-- `lua/config/options.lua` — editor options / `completeopt`
-- `lua/config/keymaps.lua` — global mappings
-- `lua/config/commands.lua` — user commands (`:ProjectRun`, `:ProjectBuild`)
-- `lua/config/autocmds.lua` — global autocmd placeholder
-- `lua/features/project_terminal.lua` — reusable Neovim terminal split workflow
-- `lua/plugins/init.lua` — plugin install list via `vim.pack.add`
-- `lua/plugins/ui.lua` — colorscheme/UI/picker/oil/gitsigns setup
-- `lua/plugins/editing.lua` — autopairs + optional `nvim-cmp` integration hook
-- `lua/plugins/lsp.lua` — LSP server setup, completion mappings, `LspAttach`
+## Requirements
 
-## Plugins
+- Neovim `0.11.x`
+- `git`
+- `curl` (optional, for many language/tool install flows)
+- `python3` (for Python tooling and the commit AI helper)
+- Language tools you care about (see [Language support](#language-support))
 
-Installed with `vim.pack.add`:
+Optional but recommended:
+- `ripgrep` for Telescope live grep (`fg` mapping)
+- `fd` for faster Telescope file discovery
 
+---
+
+## Layout
+
+```text
+.
+├── init.lua
+├── lua
+│   ├── core
+│   │   ├── autocmds.lua
+│   │   ├── commands.lua
+│   │   ├── init.lua
+│   │   ├── keymaps.lua
+│   │   ├── lazy.lua
+│   │   └── options.lua
+│   ├── features
+│   │   ├── commit_ai.lua
+│   │   └── project_terminal.lua
+│   └── plugins
+│       ├── editor.lua
+│       ├── init.lua
+│       ├── lsp.lua
+│       ├── treesitter.lua
+│       └── ui.lua
+└── scripts
+    └── git-commit-ai.py
+```
+
+---
+
+## Plugin stack
+
+### Core
+- `folke/lazy.nvim` (plugin manager)
+
+### UI / workflow
 - `folke/tokyonight.nvim`
-- `nvim-tree/nvim-web-devicons`
 - `nvim-lualine/lualine.nvim`
-- `neovim/nvim-lspconfig`
-- `echasnovski/mini.pick`
-- `stevearc/oil.nvim`
+- `nvim-tree/nvim-web-devicons`
 - `lewis6991/gitsigns.nvim`
+- `stevearc/oil.nvim` (file explorer)
+- `nvim-telescope/telescope.nvim`
+- `nvim-lua/plenary.nvim` (Telescope dependency)
+
+### Editing
 - `windwp/nvim-autopairs`
+- `ethanholz/nvim-lastplace`
 
-## Project run/build terminal
+### Syntax / structure
+- `nvim-treesitter/nvim-treesitter`
 
-- Commands:
-  - `:ProjectRun`
-  - `:ProjectBuild`
-- Opens a **bottom horizontal split** terminal (height 12) using Neovim's built-in terminal.
-- Reuses the same terminal buffer/window when possible.
-- `:ProjectRun` / `:ProjectBuild` sends commands to the project terminal and then restores focus to the previously active editing window.
-- Terminal close mappings:
-  - `q` in normal mode
-  - `<C-q>` in terminal mode
-- Project behavior:
-  - Rust (`Cargo.toml` found):
-    - Run: `cargo run`
-    - Build: `cargo build`
-  - Python:
-    - Run: `python <current-file>`
-    - Build: warns that there is no default Python build target
-  - Unknown project: warning notification
+### LSP / completion
+- `neovim/nvim-lspconfig`
+- `williamboman/mason.nvim`
+- `williamboman/mason-lspconfig.nvim`
+- `hrsh7th/nvim-cmp`
+- `hrsh7th/cmp-nvim-lsp`
+- `hrsh7th/cmp-buffer`
+- `hrsh7th/cmp-path`
+- `L3MON4D3/LuaSnip`
+- `saadparwaiz1/cmp_luasnip`
+- `rafamadriz/friendly-snippets`
 
-Default mappings:
+---
 
-- `<leader>rr` → `:ProjectRun`
-- `<leader>rb` → `:ProjectBuild`
-- `<leader>rc` → close project terminal window
-- `<leader>rt` → focus project terminal window (enters terminal insert mode)
+## Language support
 
-## Consistent Enter behavior in braces
+Configured as first-class defaults:
+- Lua (`lua_ls`)
+- Nix (`nixd`)
+- Rust (`rust_analyzer`)
+- Python (`pyright`)
+- TypeScript / JavaScript (`ts_ls`)
 
-`nvim-autopairs` handles newline splitting between pairs like `{|}` when pressing `<CR>`.
+Treesitter parsers are included for these and common related formats.
 
-This config routes insert-mode `<CR>` through a single mapping:
+### LSP server/tool installation
 
-- popup menu visible (`pumvisible() == 1`) → confirm completion (`<C-y>`)
-- popup menu hidden → run `require("nvim-autopairs").autopairs_cr()`
-
-This keeps brace newline behavior consistent across languages (Rust, C/C++, JavaScript, etc.) while preserving completion confirmation behavior.
-
-`nvim-autopairs` is configured with:
-
-- `check_ts = true` for Treesitter-aware pairing behavior
-- `enable_check_bracket_line = false` so `<CR>` can still split `{|}` in common inline cases
-
-If `hrsh7th/nvim-cmp` is installed later, `lua/plugins/editing.lua` auto-hooks
-`cmp.event:on("confirm_done", ...)` to keep completion-confirm pair insertion working.
-
-## LSP and completion
-
-Built-in Neovim LSP (no `nvim-cmp`) with:
-
+Mason is enabled and configured to install:
 - `lua_ls`
 - `nixd`
 - `rust_analyzer`
-- `pylsp`
-- `ts_ls` (TypeScript/JavaScript)
+- `pyright`
+- `ts_ls`
 
-### TypeScript LSP server install (`ts_ls`)
+Use:
+- `:Mason` to view/install/uninstall servers manually
+- `:checkhealth` to verify toolchain status
 
-`ts_ls` in `nvim-lspconfig` uses the `typescript-language-server` binary (plus TypeScript/tsserver).
+Note:
+- Some servers require system binaries in addition to Mason packages.
+- For TypeScript, ensure Node.js tooling is available in your environment.
 
-On Arch Linux (including `yay`-based installs), install:
+---
 
-```bash
-yay -S typescript typescript-language-server
-```
+## Core editor behavior
 
-Then restart Neovim and open a `.ts`, `.tsx`, `.js`, or `.jsx` file to attach the server.
+Defaults include:
+- `termguicolors`
+- line numbers + relative numbers
+- `signcolumn=yes`
+- `cursorline`
+- `clipboard=unnamedplus`
+- no swapfile
+- 2-space indentation (`tabstop/shiftwidth/softtabstop`)
+- `expandtab`, smart/auto indent
+- `wrap=false`
+- `scrolloff=6`
+- sane completion defaults (`completeopt`)
 
-Behavior kept from previous config:
+---
 
-- `LspAttach` buffer-local mappings (`K`, `gd`, `gr`, diagnostics, rename/code actions)
-- manual completion trigger: `<C-Space>`
-- aggressive auto-trigger completion by widening trigger characters to printable ASCII
-- popup control mappings in insert mode:
-  - `<Tab>` / `<S-Tab>` navigate popup when visible
-  - `<CR>` confirms popup selection when visible
+## Keymaps
 
-## After pulling updates
+Leader is space, but your muscle-memory direct mappings are preserved as requested.
 
-Inside Neovim, run:
+### Global shortcuts
+- `w` → write
+- `q` → quit
+- `y` / `d` (normal + visual) → use system clipboard
+- `yy` (insert mode) → leave insert mode
+- `e` → open Oil file explorer
+- `ff` → Telescope file picker
+- `fb` → Telescope buffer picker
+- `fg` → Telescope grep picker
+- `h` → Telescope help picker
+- `gw` → save and commit with AI message helper
 
-```vim
-:packupdate
-```
+### Project terminal workflow
+- `rr` → run current project/file
+- `rb` → build current project
+- `rc` → close project terminal
+- `rt` → focus project terminal
 
-(or your usual `vim.pack` update flow) to fetch `nvim-autopairs` and remove old plugin state.
+### LSP defaults
+- `K` hover
+- `gd` definition
+- `gD` declaration
+- `gi` implementation
+- `gr` references
+- `<leader>lr` rename
+- `<leader>la` code action
+- `<leader>lf` format
+- `<leader>ld` diagnostics float
+- `[d` / `]d` previous/next diagnostic
+
+---
+
+## Run/build workflow details
+
+This config keeps your project terminal concept:
+
+- Uses a **reusable bottom split terminal**
+- Sends run/build commands into that split
+- Returns focus to your previous editing window after sending
+
+Detection rules:
+- `Cargo.toml` → `cargo run` / `cargo build`
+- `package.json` → `npm run dev` / `npm run build`
+- `flake.nix` → `nix run` / `nix build`
+- Python file → `python3 <current-file>` (run only)
+- Lua file → `lua <current-file>` (run only)
+
+Commands also exist:
+- `:ProjectRun`
+- `:ProjectBuild`
+
+---
+
+## Git commit AI flow (`gw`)
+
+The workflow keeps your original concept:
+
+1. Save current buffer.
+2. Detect git repository root from current buffer location.
+3. Run external helper script: `scripts/git-commit-ai.py`.
+4. Open `vim.ui.input` with suggested commit message prefilled.
+5. Run `git commit -a -m "<final message>"`.
+
+If the script fails, returns empty output, or you are not in a git repo, a clear notification is shown.
+
+---
+
+## Install / update plugins
+
+First launch after cloning:
+- Open Neovim and let lazy bootstrap itself automatically.
+
+Useful lazy commands:
+- `:Lazy` open lazy UI
+- `:Lazy sync` install/update/remove to match spec
+- `:Lazy update` update plugins
+- `:Lazy clean` remove unused plugins
+- `:Lazy health` plugin health checks
+
+---
+
+## Notes
+
+- This setup intentionally avoids nightly-only APIs and heavy abstractions.
+- Files are small on purpose so it is easy to maintain months later.
+- Extend by adding plugin specs in `lua/plugins/` and wiring new behavior in
+  `lua/core/` or `lua/features/`.
