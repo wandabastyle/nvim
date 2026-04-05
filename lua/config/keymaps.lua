@@ -22,3 +22,5 @@ vim.keymap.set("n", "<leader>fg", pick.grep)
 vim.keymap.set("n", "<leader>h", pick.help)
 
 vim.keymap.set("n", "<leader>e", ":Oil<CR>")
+
+vim.keymap.set("n", "<Esc>", "<Esc>:nohlsearch<CR>", { silent = true })
