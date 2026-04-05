@@ -50,13 +50,19 @@ for k, v in pairs({
 	end, { expr = true, silent = true })
 end
 
+local autopairs = require("nvim-autopairs")
+
 vim.keymap.set("i", "<CR>", function()
 	if vim.fn.pumvisible() == 1 then
-		return vim.api.nvim_replace_termcodes("<C-y>", true, true, true)
+		if vim.fn.complete_info({ "selected" }).selected ~= -1 then
+			return vim.api.nvim_replace_termcodes("<C-y>", true, true, true)
+		end
+
+		return vim.api.nvim_replace_termcodes("<C-e>", true, true, true) .. autopairs.autopairs_cr()
 	end
 
-	return vim.api.nvim_replace_termcodes("<CR>", true, true, true)
-end, { expr = true, replace_keycodes = false, silent = true, desc = "Confirm completion or native newline" })
+	return autopairs.autopairs_cr()
+end, { expr = true, replace_keycodes = false, silent = true, desc = "Confirm completion or autopairs newline" })
 
 vim.api.nvim_create_autocmd("LspAttach", {
 	callback = function(ev)
