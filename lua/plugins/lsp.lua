@@ -8,7 +8,7 @@ return {
 
       local ensure_installed = {
         "lua-language-server",
-        "nixd",
+        "nil",
         "rust-analyzer",
         "pyright",
         "typescript-language-server",
@@ -148,13 +148,8 @@ return {
             },
           },
         },
-        nixd = {
+        nil_ls = {
           capabilities = capabilities,
-          settings = {
-            nixd = {
-              formatting = { command = { "nixfmt" } },
-            },
-          },
         },
         rust_analyzer = {
           capabilities = capabilities,
