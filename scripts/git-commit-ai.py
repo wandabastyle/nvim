@@ -11,6 +11,7 @@ OLLAMA_TAGS_URL = "http://127.0.0.1:11434/api/tags"
 MODEL = "qwen2.5-coder:7b"
 MAX_DIFF_CHARS = 12000
 
+
 def run(cmd):
     """
     Run a command and return sripped stdout.
@@ -28,6 +29,8 @@ def run(cmd):
         return None
 
     return result.stdout.strip()
+
+
 
 def get_diff():
     """
@@ -68,6 +71,8 @@ def get_diff():
 
     return None, None
 
+
+
 def get_changed_files():
     """
     Return a short git status listing.
@@ -86,6 +91,8 @@ def get_changed_files():
 
     return status
 
+
+
 def ollama_ping():
     """
     Return True if the local Ollama server is responding.
@@ -99,67 +106,61 @@ def ollama_ping():
     except Exception:
         return False
 
-def start_ollama_serve():
-    """
-    Start 'ollama serve' in the background.
 
-    Return the subprocess handle so we can stop it later.
-    """
-    try:
-        process = subprocess.Popen(
-            ["ollama", "serve"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        return process
-
-    except FileNotFoundError as exc:
-        raise RuntimeError(
-            "ollama CLI not found in PATH"
-        ) from exc
-    
-def stop_process(process):
-    """
-    Stop a process we started ourselves.
-    """
-    if process.poll() is not None:
-        return
-
-    try:
-        process.terminate()
-
-        try:
-            process.wait(timeout=2.5)
-
-        except subprocess.TimeoutExpired:
-            process.kill()
-    except Exception:
-        pass
 
 def ensure_ollama():
     """
-    Ensure Ollama is running.
+    Ensure Ollama is running through the user systemd service.
 
-    Return:
-        None    -> Ollama was already running
-        process -> this script started it
+    We also restart the stop timer so each use refreshes the TTL.
     """
-    if ollama_ping():
-        return None
+    if not ollama_ping():
+        result = subprocess.run(
+            [
+                "systemctl",
+                "--user",
+                "start",
+                "ollama.service",
+            ],
+            text=True,
+            capture_output=True,
+        )
 
-    process = start_ollama_serve()
+        if result.returncode != 0:
+            raise RuntimeError(
+                "Failed to start ollama.service:\n"
+                + (result.stderr.strip() or "unknown error")
+            )
 
-    for _ in range(25):
-        if ollama_ping():
-            return process
+        for _ in range(25):
+            if ollama_ping():
+                break
 
-        time.sleep(0.2)
+            time.sleep(0.2)
 
-    stop_process(process)
+        if not ollama_ping():
+            raise RuntimeError(
+                "Ollama server did not come up"
+            )
 
-    raise RuntimeError(
-        "Ollama server did not come up"
+    timer_result = subprocess.run(
+        [
+            "systemctl",
+            "--user",
+            "restart",
+            "ollama-stop.timer",
+        ],
+        text=True,
+        capture_output=True,
     )
+
+    if timer_result.returncode != 0:
+        raise RuntimeError(
+            "Failed to restart ollama-stop.timer:\n"
+            + (timer_result.stderr.strip() or "unknown error")
+        )
+
+
 
 def ask_ollama(diff_kind, changed_files, diff_text):
     """
@@ -170,31 +171,31 @@ def ask_ollama(diff_kind, changed_files, diff_text):
     """
     trimmed_diff = diff_text[:MAX_DIFF_CHARS]
 
-    prompt = f"""
-    You write excelent git commit messages.
+    prompt = f"""You write excellent git commit messages.
 
-    Task:
-    Generate exactly one git commit message for thos {diff_kind} diff.
+Task:
+Generate exactly one git commit message for this {diff_kind} diff.
 
-    Rules:
-    - Qutput only the commit message
-    - No quotes
-    - One line only
-    - Use conventional commits
-    - Keep it under 72 characters if possible
-    - Be specific, not generic
+Rules:
+- Output only the commit message
+- No quotes
+- One line only
+- Use conventional commits
+- Keep it under 72 characters if possible
+- Be specific, not generic
 
-    Changed files:
-    {changed_files}
+Changed files:
+{changed_files}
 
-    Diff:
-    {trimmed_diff}
-    """
+Diff:
+{trimmed_diff}
+"""
 
     payload = {
         "model": MODEL,
         "prompt": prompt,
         "stream": False,
+        "keep_alive": "10m",
     }
 
     request = urllib.request.Request(
@@ -217,6 +218,8 @@ def ask_ollama(diff_kind, changed_files, diff_text):
 
     return first_line
 
+
+
 def main():
     """Script entry point."""
     inside = run([
@@ -235,27 +238,22 @@ def main():
         return 0
 
     changed_files = get_changed_files()
-    started_process = None
 
-    try:
-        started_process = ensure_ollama()
+    ensure_ollama()
 
-        message = ask_ollama(
-            diff_kind,
-            changed_files,
-            diff_text,
-        )
+    message = ask_ollama(
+        diff_kind,
+        changed_files,
+        diff_text,
+    )
 
-        if not message:
-            return 0
-
-        print(message)
-
+    if not message:
         return 0
 
-    finally:
-        if started_process is not None:
-            stop_process(started_process)
+    print(message)
+
+    return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())
