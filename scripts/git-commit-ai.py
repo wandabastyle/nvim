@@ -42,7 +42,7 @@ def get_diff():
         "diff",
         "--cached",
         "--no-ext-diff",
-        "unified=0",
+        "--unified=0",
     ])
 
     if staged:
@@ -60,6 +60,24 @@ def get_diff():
 
     return None, None
 
+def get_changed_files():
+    """
+    Return a short git status listing.
+
+    This is a useful context for the LLM because filenames often make the
+    intent of a change much clearer.
+    """
+    status = run([
+        "git",
+        "status",
+        "--short",
+    ])
+
+    if not status:
+        return ""
+
+    return status
+
 def main():
     """Script entry point."""
     inside = run([
@@ -76,6 +94,17 @@ def main():
 
     if not diff_text:
         return 0
+
+    changed_files = get_changed_files()
+
+    print(f"using {diff_kind} diff")
+    print("changed files:")
+    print(changed_files or "(none)")
+    print()
+    print("first diff line:")
+    print(diff_text.splitlines()[0])
+
+    return 0
 
 if __name__ == "__main__":
     sys.exit(main())
