@@ -66,10 +66,11 @@ local function run_commit_message_ai(git_root, callback)
   )
 end
 
--- Run `git commit -m` with the final message.
+-- Run `git commit -a -m` with the final message.
 local function commit_with_message(git_root, message, callback)
   vim.system(
-    { "git", "commit", "-m", message },
+    -- `-a` includes all modified tracked files automatically.
+    { "git", "commit", "-a", "-m", message },
     { cwd = git_root, text = true },
     function(result)
       vim.schedule(function()
