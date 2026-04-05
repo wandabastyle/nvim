@@ -70,12 +70,11 @@ Optional but recommended:
 - `ethanholz/nvim-lastplace`
 
 ### Syntax / structure
-- `nvim-treesitter/nvim-treesitter`
+- `nvim-treesitter/nvim-treesitter` (pinned to `master` for Neovim 0.11)
 
 ### LSP / completion
 - `neovim/nvim-lspconfig`
 - `williamboman/mason.nvim`
-- `williamboman/mason-lspconfig.nvim`
 - `hrsh7th/nvim-cmp`
 - `hrsh7th/cmp-nvim-lsp`
 - `hrsh7th/cmp-buffer`
@@ -100,11 +99,11 @@ Treesitter parsers are included for these and common related formats.
 ### LSP server/tool installation
 
 Mason is enabled and configured to install:
-- `lua_ls`
+- `lua-language-server`
 - `nixd`
-- `rust_analyzer`
+- `rust-analyzer`
 - `pyright`
-- `ts_ls`
+- `typescript-language-server`
 
 Use:
 - `:Mason` to view/install/uninstall servers manually
@@ -220,6 +219,7 @@ Useful lazy commands:
 
 ## Notes
 
+- LSP wiring uses Neovim 0.11 native APIs: `vim.lsp.config()` + `vim.lsp.enable()`.
 - This setup intentionally avoids nightly-only APIs and heavy abstractions.
 - Files are small on purpose so it is easy to maintain months later.
 - Extend by adding plugin specs in `lua/plugins/` and wiring new behavior in

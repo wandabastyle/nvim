@@ -3,23 +3,34 @@ return {
     "williamboman/mason.nvim",
     cmd = "Mason",
     opts = {},
-  },
-  {
-    "williamboman/mason-lspconfig.nvim",
-    dependencies = {
-      "williamboman/mason.nvim",
-      "neovim/nvim-lspconfig",
-    },
-    opts = {
-      ensure_installed = {
-        "lua_ls",
+    config = function(_, opts)
+      require("mason").setup(opts)
+
+      local ensure_installed = {
+        "lua-language-server",
         "nixd",
-        "rust_analyzer",
+        "rust-analyzer",
         "pyright",
-        "ts_ls",
-      },
-      automatic_installation = true,
-    },
+        "typescript-language-server",
+      }
+
+      local registry = require("mason-registry")
+
+      local function ensure_packages()
+        for _, name in ipairs(ensure_installed) do
+          local ok, pkg = pcall(registry.get_package, name)
+          if ok and not pkg:is_installed() then
+            pkg:install()
+          end
+        end
+      end
+
+      if registry.refresh then
+        registry.refresh(ensure_packages)
+      else
+        ensure_packages()
+      end
+    end,
   },
   {
     "hrsh7th/nvim-cmp",
@@ -87,13 +98,11 @@ return {
     event = { "BufReadPre", "BufNewFile" },
     dependencies = {
       "hrsh7th/cmp-nvim-lsp",
-      "williamboman/mason-lspconfig.nvim",
       "windwp/nvim-autopairs",
+      "williamboman/mason.nvim",
     },
     config = function()
-      local lspconfig = require("lspconfig")
-      local cmp_lsp = require("cmp_nvim_lsp")
-      local capabilities = cmp_lsp.default_capabilities()
+      local capabilities = require("cmp_nvim_lsp").default_capabilities()
 
       vim.diagnostic.config({
         virtual_text = true,
@@ -101,62 +110,67 @@ return {
         float = { border = "rounded" },
       })
 
-      local on_attach = function(_, bufnr)
-        local map = function(mode, lhs, rhs, desc)
-          vim.keymap.set(mode, lhs, rhs, { buffer = bufnr, silent = true, desc = desc })
-        end
+      vim.api.nvim_create_autocmd("LspAttach", {
+        group = vim.api.nvim_create_augroup("user-lsp-keymaps", { clear = true }),
+        callback = function(event)
+          local map = function(mode, lhs, rhs, desc)
+            vim.keymap.set(mode, lhs, rhs, {
+              buffer = event.buf,
+              silent = true,
+              desc = desc,
+            })
+          end
 
-        map("n", "K", vim.lsp.buf.hover, "Hover")
-        map("n", "gd", vim.lsp.buf.definition, "Go to definition")
-        map("n", "gD", vim.lsp.buf.declaration, "Go to declaration")
-        map("n", "gi", vim.lsp.buf.implementation, "Go to implementation")
-        map("n", "gr", vim.lsp.buf.references, "References")
-        map("n", "<leader>lr", vim.lsp.buf.rename, "Rename")
-        map("n", "<leader>la", vim.lsp.buf.code_action, "Code action")
-        map("n", "<leader>lf", function()
-          vim.lsp.buf.format({ async = true })
-        end, "Format")
-        map("n", "<leader>ld", vim.diagnostic.open_float, "Line diagnostics")
-        map("n", "[d", vim.diagnostic.goto_prev, "Previous diagnostic")
-        map("n", "]d", vim.diagnostic.goto_next, "Next diagnostic")
+          map("n", "K", vim.lsp.buf.hover, "Hover")
+          map("n", "gd", vim.lsp.buf.definition, "Go to definition")
+          map("n", "gD", vim.lsp.buf.declaration, "Go to declaration")
+          map("n", "gi", vim.lsp.buf.implementation, "Go to implementation")
+          map("n", "gr", vim.lsp.buf.references, "References")
+          map("n", "<leader>lr", vim.lsp.buf.rename, "Rename")
+          map("n", "<leader>la", vim.lsp.buf.code_action, "Code action")
+          map("n", "<leader>lf", function()
+            vim.lsp.buf.format({ async = true })
+          end, "Format")
+          map("n", "<leader>ld", vim.diagnostic.open_float, "Line diagnostics")
+          map("n", "[d", vim.diagnostic.goto_prev, "Previous diagnostic")
+          map("n", "]d", vim.diagnostic.goto_next, "Next diagnostic")
+        end,
+      })
+
+      local servers = {
+        lua_ls = {
+          capabilities = capabilities,
+          settings = {
+            Lua = {
+              diagnostics = { globals = { "vim" } },
+              workspace = { checkThirdParty = false },
+              hint = { enable = true },
+            },
+          },
+        },
+        nixd = {
+          capabilities = capabilities,
+          settings = {
+            nixd = {
+              formatting = { command = { "nixfmt" } },
+            },
+          },
+        },
+        rust_analyzer = {
+          capabilities = capabilities,
+        },
+        pyright = {
+          capabilities = capabilities,
+        },
+        ts_ls = {
+          capabilities = capabilities,
+        },
+      }
+
+      for server, config in pairs(servers) do
+        vim.lsp.config(server, config)
+        vim.lsp.enable(server)
       end
-
-      lspconfig.lua_ls.setup({
-        capabilities = capabilities,
-        on_attach = on_attach,
-        settings = {
-          Lua = {
-            diagnostics = { globals = { "vim" } },
-            workspace = { checkThirdParty = false },
-            hint = { enable = true },
-          },
-        },
-      })
-
-      lspconfig.nixd.setup({
-        capabilities = capabilities,
-        on_attach = on_attach,
-        settings = {
-          nixd = {
-            formatting = { command = { "nixfmt" } },
-          },
-        },
-      })
-
-      lspconfig.rust_analyzer.setup({
-        capabilities = capabilities,
-        on_attach = on_attach,
-      })
-
-      lspconfig.pyright.setup({
-        capabilities = capabilities,
-        on_attach = on_attach,
-      })
-
-      lspconfig.ts_ls.setup({
-        capabilities = capabilities,
-        on_attach = on_attach,
-      })
 
       local cmp_autopairs = require("nvim-autopairs.completion.cmp")
       require("cmp").event:on("confirm_done", cmp_autopairs.on_confirm_done())
