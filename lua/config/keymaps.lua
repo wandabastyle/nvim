@@ -1,26 +1,42 @@
-local pick = require("mini.pick").builtin
-local project_terminal = require("features.project_terminal")
+local map = vim.keymap.set
+local terminal = require("util.project_terminal")
 
-vim.keymap.set("n", "<leader>w", ":write<CR>")
-vim.keymap.set("n", "<leader>q", ":quit<CR>")
-vim.keymap.set({ "n", "v", "x" }, "<leader>y", '"+y<CR>')
-vim.keymap.set({ "n", "v", "x" }, "<leader>d", '"+d<CR>')
+-- quick save / quit
+map("n", "<leader>w", "<cmd>write<CR>", { desc = "Save file" })
+map("n", "<leader>q", "<cmd>quit<CR>", { desc = "Quit window" })
 
-vim.keymap.set("n", "<leader>rr", "<cmd>ProjectRun<CR>", { silent = true, desc = "Run project/current file" })
-vim.keymap.set("n", "<leader>rb", "<cmd>ProjectBuild<CR>", { silent = true, desc = "Build project" })
-vim.keymap.set("n", "<leader>rc", project_terminal.close, { silent = true, desc = "Close project terminal" })
-vim.keymap.set("n", "<leader>rt", project_terminal.focus, { silent = true, desc = "Focus project terminal" })
+-- clipboard workflow
+map({ "n", "v" }, "<leader>y", '"+y', { desc = "Yank to system clipboard" })
+map({ "n", "v" }, "<leader>d", '"+d', { desc = "Delete to system clipboard" })
 
-vim.keymap.set("n", "<C-Down>", ":m .+1<CR>==", { silent = true, desc = "Move line down" })
-vim.keymap.set("n", "<C-Up>", ":m .-2<CR>==", { silent = true, desc = "Move line up" })
+-- quick movement and insert escape habit
+map("n", "<C-Down>", ":m .+1<CR>==", { silent = true, desc = "Move line down" })
+map("n", "<C-Up>", ":m .-2<CR>==", { silent = true, desc = "Move line up" })
+map("i", "yy", "<Esc>", { desc = "Leave insert mode" })
 
-vim.keymap.set("i", "yy", "<Esc>", { noremap = true, silent = true, desc = "Exit insert mode" })
+-- diagnostics
+map("n", "<leader>ld", vim.diagnostic.open_float, { desc = "Line diagnostics" })
+map("n", "[d", vim.diagnostic.goto_prev, { desc = "Previous diagnostic" })
+map("n", "]d", vim.diagnostic.goto_next, { desc = "Next diagnostic" })
 
-vim.keymap.set("n", "<leader>ff", pick.files)
-vim.keymap.set("n", "<leader>fb", pick.buffers)
-vim.keymap.set("n", "<leader>fg", pick.grep)
-vim.keymap.set("n", "<leader>h", pick.help)
+-- clear search highlight
+map("n", "<Esc>", "<cmd>nohlsearch<CR>", { silent = true, desc = "Clear search highlight" })
 
-vim.keymap.set("n", "<leader>e", ":Oil<CR>")
+-- telescope
+map("n", "<leader>ff", "<cmd>Telescope find_files<CR>", { desc = "Find files" })
+map("n", "<leader>fb", "<cmd>Telescope buffers<CR>", { desc = "Find buffers" })
+map("n", "<leader>fg", "<cmd>Telescope live_grep<CR>", { desc = "Live grep" })
+map("n", "<leader>fh", "<cmd>Telescope help_tags<CR>", { desc = "Help tags" })
 
-vim.keymap.set("n", "<Esc>", "<Esc>:nohlsearch<CR>", { silent = true })
+-- file explorer
+map("n", "<leader>e", "<cmd>Oil<CR>", { desc = "Open parent directory" })
+
+-- terminal run/build workflow
+map("n", "<leader>rr", function()
+  terminal.run("run")
+end, { desc = "Run project/file" })
+map("n", "<leader>rb", function()
+  terminal.run("build")
+end, { desc = "Build project" })
+map("n", "<leader>rt", terminal.focus, { desc = "Focus run terminal" })
+map("n", "<leader>rc", terminal.close, { desc = "Close run terminal" })

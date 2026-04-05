@@ -1,120 +1,177 @@
-# Neovim Config
+# Neovim config (fresh rebuild for 0.11.x)
 
-> [!WARNING]
-> This config targets **Neovim 0.13.x** APIs (nightly/pre-release at the time of writing).
-> Older versions (including 0.12.x stable) can fail with missing API errors.
+A clean, minimal Neovim setup rebuilt from scratch for **Neovim 0.11.x stable**.
 
-This repository contains a minimal Lua Neovim setup with modular config files, built-in LSP/completion, and a reusable in-editor run/build terminal workflow.
+## Goals
 
-## Structure
+- Simple structure and readable Lua
+- Lazy.nvim plugin management
+- Lightweight editing workflow (not IDE-heavy)
+- Good defaults for: **Lua, Nix, Rust, Python, TypeScript/JavaScript**
+- Keep familiar keymap spirit (leader, picker, Oil, LSP navigation, run/build terminal)
 
-- `init.lua` — bootstrap + module loading only
-- `lua/config/options.lua` — editor options / `completeopt`
-- `lua/config/keymaps.lua` — global mappings
-- `lua/config/commands.lua` — user commands (`:ProjectRun`, `:ProjectBuild`)
-- `lua/config/autocmds.lua` — global autocmd placeholder
-- `lua/features/project_terminal.lua` — reusable Neovim terminal split workflow
-- `lua/plugins/init.lua` — plugin install list via `vim.pack.add`
-- `lua/plugins/ui.lua` — colorscheme/UI/picker/oil/gitsigns setup
-- `lua/plugins/editing.lua` — autopairs + optional `nvim-cmp` integration hook
-- `lua/plugins/lsp.lua` — LSP server setup, completion mappings, `LspAttach`
+## Target version
 
-## Plugins
+- **Neovim:** `0.11.x` stable
+- **Plugin manager:** [`lazy.nvim`](https://github.com/folke/lazy.nvim)
 
-Installed with `vim.pack.add`:
+## Directory structure
 
-- `folke/tokyonight.nvim`
-- `nvim-tree/nvim-web-devicons`
+```text
+.
+├── init.lua
+├── lua
+│   ├── config
+│   │   ├── autocmds.lua
+│   │   ├── commands.lua
+│   │   ├── keymaps.lua
+│   │   ├── lazy.lua
+│   │   └── options.lua
+│   ├── plugins
+│   │   ├── editing.lua
+│   │   ├── git.lua
+│   │   ├── lsp.lua
+│   │   ├── navigation.lua
+│   │   ├── treesitter.lua
+│   │   └── ui.lua
+│   └── util
+│       └── project_terminal.lua
+└── README.md
+```
+
+## Installed plugins / features
+
+### UI
+
+- `folke/tokyonight.nvim` (using **tokyonight-moon**)
 - `nvim-lualine/lualine.nvim`
-- `neovim/nvim-lspconfig`
-- `echasnovski/mini.pick`
+- `nvim-tree/nvim-web-devicons`
+
+### Navigation / files
+
+- `nvim-telescope/telescope.nvim`
 - `stevearc/oil.nvim`
+
+### Git / editing
+
 - `lewis6991/gitsigns.nvim`
+- `nvim-treesitter/nvim-treesitter`
 - `windwp/nvim-autopairs`
+- `ethanholz/nvim-lastplace`
 
-## Project run/build terminal
+### LSP
 
-- Commands:
-  - `:ProjectRun`
-  - `:ProjectBuild`
-- Opens a **bottom horizontal split** terminal (height 12) using Neovim's built-in terminal.
-- Reuses the same terminal buffer/window when possible.
-- `:ProjectRun` / `:ProjectBuild` sends commands to the project terminal and then restores focus to the previously active editing window.
-- Terminal close mappings:
-  - `q` in normal mode
-  - `<C-q>` in terminal mode
-- Project behavior:
-  - Rust (`Cargo.toml` found):
-    - Run: `cargo run`
-    - Build: `cargo build`
-  - Python:
-    - Run: `python <current-file>`
-    - Build: warns that there is no default Python build target
-  - Unknown project: warning notification
+- `neovim/nvim-lspconfig`
+- `williamboman/mason.nvim`
+- `williamboman/mason-lspconfig.nvim`
 
-Default mappings:
+## Language setup
 
-- `<leader>rr` → `:ProjectRun`
-- `<leader>rb` → `:ProjectBuild`
-- `<leader>rc` → close project terminal window
-- `<leader>rt` → focus project terminal window (enters terminal insert mode)
+Enabled LSP servers:
 
-## Consistent Enter behavior in braces
-
-`nvim-autopairs` handles newline splitting between pairs like `{|}` when pressing `<CR>`.
-
-This config routes insert-mode `<CR>` through a single mapping:
-
-- popup menu visible (`pumvisible() == 1`) → confirm completion (`<C-y>`)
-- popup menu hidden → run `require("nvim-autopairs").autopairs_cr()`
-
-This keeps brace newline behavior consistent across languages (Rust, C/C++, JavaScript, etc.) while preserving completion confirmation behavior.
-
-`nvim-autopairs` is configured with:
-
-- `check_ts = true` for Treesitter-aware pairing behavior
-- `enable_check_bracket_line = false` so `<CR>` can still split `{|}` in common inline cases
-
-If `hrsh7th/nvim-cmp` is installed later, `lua/plugins/editing.lua` auto-hooks
-`cmp.event:on("confirm_done", ...)` to keep completion-confirm pair insertion working.
-
-## LSP and completion
-
-Built-in Neovim LSP (no `nvim-cmp`) with:
-
-- `lua_ls`
+- `lua_ls` (Lua, including Neovim runtime awareness)
 - `nixd`
 - `rust_analyzer`
-- `pylsp`
-- `ts_ls` (TypeScript/JavaScript)
+- `pyright`
+- `ts_ls` (TypeScript + JavaScript)
 
-### TypeScript LSP server install (`ts_ls`)
+Completion uses Neovim's built-in LSP completion (`vim.lsp.completion`) on attach.
 
-`ts_ls` in `nvim-lspconfig` uses the `typescript-language-server` binary (plus TypeScript/tsserver).
+## External dependencies (install on your system)
 
-On Arch Linux (including `yay`-based installs), install:
+### Required runtime tools
 
-```bash
-yay -S typescript typescript-language-server
-```
+- `git`
+- `curl` (or a package manager capable of fetching plugins)
+- a Nerd Font (recommended for icons)
 
-Then restart Neovim and open a `.ts`, `.tsx`, `.js`, or `.jsx` file to attach the server.
+### For Telescope grep
 
-Behavior kept from previous config:
+- `ripgrep` (`rg`)
 
-- `LspAttach` buffer-local mappings (`K`, `gd`, `gr`, diagnostics, rename/code actions)
-- manual completion trigger: `<C-Space>`
-- aggressive auto-trigger completion by widening trigger characters to printable ASCII
-- popup control mappings in insert mode:
-  - `<Tab>` / `<S-Tab>` navigate popup when visible
-  - `<CR>` confirms popup selection when visible
+### LSP servers and language tools
 
-## After pulling updates
+Mason can install configured servers for you. You may still want language toolchains installed:
 
-Inside Neovim, run:
+- **Lua:** `lua-language-server` (Mason)
+- **Nix:** `nixd` + `nixfmt`
+- **Rust:** `rust-analyzer` + Rust toolchain (`cargo`, `rustc`)
+- **Python:** `pyright` (Mason) + Python interpreter
+- **TypeScript/JavaScript:** `typescript-language-server` (Mason) and `typescript`
 
-```vim
-:packupdate
-```
+If a Mason package fails on your distro, install that tool with your system package manager and keep the same binary name.
 
-(or your usual `vim.pack` update flow) to fetch `nvim-autopairs` and remove old plugin state.
+## First start
+
+1. Clone repo into `~/.config/nvim`.
+2. Open Neovim.
+3. Wait for lazy.nvim bootstrap.
+4. Run:
+   - `:Lazy sync`
+   - `:Mason` (confirm servers are installed)
+
+## Updating plugins
+
+- `:Lazy sync` to update/install
+- `:Lazy clean` to remove unused plugins
+- `:Lazy health` for diagnostics
+
+## Keymap overview
+
+Leader key: **Space**
+
+### Core
+
+- `<leader>w` save
+- `<leader>q` quit
+- `<leader>y` yank to system clipboard
+- `<leader>d` delete to system clipboard
+- `<Esc>` clear search highlight
+
+### Picker / explorer
+
+- `<leader>ff` find files
+- `<leader>fb` buffers
+- `<leader>fg` live grep
+- `<leader>fh` help tags
+- `<leader>e` Oil file explorer
+
+### Diagnostics + LSP
+
+- `[d` previous diagnostic
+- `]d` next diagnostic
+- `<leader>ld` line diagnostic float
+- `K` hover
+- `gd` definition
+- `gr` references
+- `<leader>lr` rename
+- `<leader>la` code action
+- `<leader>lf` format
+- `<C-Space>` trigger completion (insert mode)
+
+### Run/build terminal workflow
+
+- `:ProjectRun` run current project/file in reusable bottom terminal split
+- `:ProjectBuild` build current project/file in reusable bottom terminal split
+- `<leader>rr` run
+- `<leader>rb` build
+- `<leader>rt` focus terminal
+- `<leader>rc` close terminal
+
+Current defaults:
+
+- Rust project (`Cargo.toml`):
+  - run: `cargo run`
+  - build: `cargo build`
+- Python file:
+  - run: `python <current-file>`
+  - build: `python -m compileall .`
+- JS/TS project (`package.json`):
+  - run: `npm run dev`
+  - build: `npm run build`
+
+## Notes on Mason
+
+- Mason manages editor-side LSP binaries for convenience.
+- It does **not** replace language runtimes (Node, Python, Rust toolchains, etc.).
+- If you prefer fully system-managed tooling, you can disable Mason and still use `nvim-lspconfig`.
