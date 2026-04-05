@@ -55,8 +55,8 @@ vim.keymap.set("i", "<CR>", function()
 		return vim.api.nvim_replace_termcodes("<C-y>", true, true, true)
 	end
 
-	return require("nvim-autopairs").autopairs_cr()
-end, { expr = true, replace_keycodes = false, silent = true, desc = "Confirm completion or autopairs newline" })
+	return vim.api.nvim_replace_termcodes("<CR>", true, true, true)
+end, { expr = true, replace_keycodes = false, silent = true, desc = "Confirm completion or native newline" })
 
 vim.api.nvim_create_autocmd("LspAttach", {
 	callback = function(ev)
