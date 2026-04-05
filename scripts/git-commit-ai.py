@@ -10,15 +10,15 @@ OLLAMA_URL = "http://127.0.0.1:11434/api/generate"
 OLLAMA_TAGS_URL = "http://127.0.0.1:11434/api/tags"
 MODEL = "qwen2.5-coder:7b"
 MAX_DIFF_CHARS = 12000
+SUBMODULE_LOG_COUNT = 5
 
 
 def run(cmd):
     """
-    Run a command and return sripped stdout.
+    Run a command and return stripped stdout.
 
-    Return None if the command fails
+    Return None if the command fails.
     """
-
     result = subprocess.run(
         cmd,
         text=True,
@@ -31,12 +31,11 @@ def run(cmd):
     return result.stdout.strip()
 
 
-
 def get_diff():
     """
-    Return the best availabe git diff.
+    Return the best available git diff.
 
-    We prefer ste staged diff because that is usually closer to what will
+    We prefer the staged diff because that is usually closer to what will
     become the next commit.
 
     Return a tuple:
@@ -46,7 +45,7 @@ def get_diff():
         "staged"    -> git diff --cached
         "working"   -> git diff
 
-    Return (None, None) if there is no diff
+    Return (None, None) if there is no diff.
     """
     staged = run([
         "git",
@@ -72,12 +71,11 @@ def get_diff():
     return None, None
 
 
-
 def get_changed_files():
     """
     Return a short git status listing.
 
-    This is a useful context for the LLM because filenames often make the
+    This is useful context for the LLM because filenames often make the
     intent of a change much clearer.
     """
     status = run([
@@ -92,6 +90,60 @@ def get_changed_files():
     return status
 
 
+def get_submodule_logs():
+    """
+    Return short commit logs for changed submodules.
+
+    The main repo diff only shows submodule pointer changes. These short
+    logs give the model actual context from inside the submodule repos.
+    """
+    status = run([
+        "git",
+        "submodule",
+        "status",
+    ])
+
+    if not status:
+        return ""
+
+    logs = []
+
+    for line in status.splitlines():
+        line = line.strip()
+
+        # Changed submodules are marked with '+' or '-'.
+        if not line or line[0] not in "+-":
+            continue
+
+        parts = line.split()
+
+        if len(parts) < 2:
+            continue
+
+        path = parts[1]
+
+        log = run([
+            "git",
+            "-C",
+            path,
+            "log",
+            "--oneline",
+            "-n",
+            str(SUBMODULE_LOG_COUNT),
+        ])
+
+        if not log:
+            continue
+
+        logs.append(
+            f"{path}:\n{log}"
+        )
+
+    if not logs:
+        return ""
+
+    return "\n\n".join(logs)
+
 
 def ollama_ping():
     """
@@ -105,7 +157,6 @@ def ollama_ping():
 
     except Exception:
         return False
-
 
 
 def ensure_ollama():
@@ -161,8 +212,7 @@ def ensure_ollama():
         )
 
 
-
-def ask_ollama(diff_kind, changed_files, diff_text):
+def ask_ollama(diff_kind, changed_files, diff_text, submodule_logs):
     """
     Ask Ollama for a single commit message suggestion.
 
@@ -185,7 +235,10 @@ Rules:
 - Be specific, not generic
 
 Changed files:
-{changed_files}
+{changed_files or "(none)"}
+
+Submodule changes:
+{submodule_logs or "(none)"}
 
 Diff:
 {trimmed_diff}
@@ -219,7 +272,6 @@ Diff:
     return first_line
 
 
-
 def main():
     """Script entry point."""
     inside = run([
@@ -238,6 +290,7 @@ def main():
         return 0
 
     changed_files = get_changed_files()
+    submodule_logs = get_submodule_logs()
 
     ensure_ollama()
 
@@ -245,6 +298,7 @@ def main():
         diff_kind,
         changed_files,
         diff_text,
+        submodule_logs,
     )
 
     if not message:
