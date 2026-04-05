@@ -92,5 +92,10 @@ vim.api.nvim_create_autocmd("LspAttach", {
 			client.server_capabilities.completionProvider.triggerCharacters = identifier_chars
 			vim.lsp.completion.enable(true, client.id, ev.buf, { autotrigger = true })
 		end
+
+		if client:supports_method("textDocument/semanticTokens/full")
+			or client:supports_method("textDocument/semanticTokens/range") then
+			vim.lsp.semantic_tokens.start(ev.buf, client.id)
+		end
 	end,
 })

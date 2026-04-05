@@ -3,6 +3,7 @@ vim.g.mapleader = " "
 require("config.options")
 require("plugins")
 require("plugins.ui")
+require("config.highlights")
 require("plugins.editing")
 vim.cmd("packadd! nvim-treesitter")
 require("plugins.treesitter")
