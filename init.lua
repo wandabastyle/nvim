@@ -1,15 +1,8 @@
 vim.g.mapleader = " "
+vim.g.maplocalleader = " "
 
 require("config.options")
-require("plugins")
-require("plugins.ui")
-require("config.highlights")
-require("plugins.editing")
-vim.cmd("packadd! nvim-treesitter")
-require("plugins.treesitter")
-require("plugins.lsp")
-require("features.project_terminal").setup()
-require("config.commands")
 require("config.keymaps")
 require("config.autocmds")
-require("config.commit_ai").setup()
+require("config.commands")
+require("config.lazy")

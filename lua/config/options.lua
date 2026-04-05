@@ -1,19 +1,35 @@
-vim.o.termguicolors = true
-vim.o.number = true
-vim.o.relativenumber = true
-vim.o.swapfile = false
-vim.o.clipboard = "unnamedplus"
-vim.o.signcolumn = "yes"
-vim.o.cursorline = true
-vim.o.winborder = "rounded"
+local opt = vim.opt
 
-vim.o.tabstop = 2
-vim.o.shiftwidth = 2
-vim.o.softtabstop = 2
-vim.o.smartindent = true
-vim.o.autoindent = true
-vim.o.wrap = false
-vim.o.scrolloff = 5
+opt.number = true
+opt.relativenumber = true
+opt.termguicolors = true
+opt.signcolumn = "yes"
+opt.cursorline = true
+opt.scrolloff = 5
+opt.wrap = false
+opt.splitbelow = true
+opt.splitright = true
 
-vim.o.completeopt = "menu,menuone,noinsert,noselect"
-vim.cmd("set completeopt+=noselect")
+opt.tabstop = 2
+opt.shiftwidth = 2
+opt.softtabstop = 2
+opt.expandtab = true
+opt.smartindent = true
+
+opt.clipboard = "unnamedplus"
+opt.swapfile = false
+opt.undofile = true
+opt.ignorecase = true
+opt.smartcase = true
+opt.updatetime = 200
+
+opt.completeopt = { "menu", "menuone", "noinsert", "noselect", "popup" }
+
+vim.diagnostic.config({
+  severity_sort = true,
+  float = { border = "rounded" },
+  signs = true,
+  underline = true,
+  update_in_insert = false,
+  virtual_text = false,
+})
