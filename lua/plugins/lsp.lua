@@ -1,12 +1,4 @@
-vim.lsp.config["nixd"] = {
-	settings = {
-		nixd = {
-			formatting = { command = { "nixfmt" } },
-			nixpkgs = { expr = "import <nixpkgs> {}" },
-			options = { nixos = { expr = "(import <nixpkgs/nixos> { configuration = {}; }).options" } },
-		},
-	},
-}
+vim.lsp.config["nil_ls"] = {}
 
 vim.lsp.config["pylsp"] = {
 	settings = {
@@ -26,7 +18,7 @@ vim.lsp.config["pylsp"] = {
 
 vim.lsp.config["ts_ls"] = {}
 
-vim.lsp.enable({ "lua_ls", "nixd", "rust_analyzer", "pylsp", "ts_ls" })
+vim.lsp.enable({ "lua_ls", "nil_ls", "rust_analyzer", "pylsp", "ts_ls" })
 
 vim.keymap.set("n", "<leader>lf", vim.lsp.buf.format)
 vim.keymap.set("i", "<C-Space>", function() vim.lsp.completion.get() end,
