@@ -60,9 +60,22 @@ vim.opt.autochdir = false
 vim.opt.iskeyword:append("-")
 vim.opt.path:append("**")
 vim.opt.selection = "inclusive"
-vim.opt.nouse = "a"
+vim.opt.mouse = "a"
 vim.opt.clipboard:append("unnamedplus")
 vim.opt.modifiable = true
 vim.opt.encoding = "UTF-8"
 
-vim.cmd("set completeopt+=noselect")
+vim.opt.foldmethod = "expr"
+vim.opt.foldexpr = "v:lua.vim.treesitter.foldexpr()"
+vim.opt.foldlevel = 99
+
+vim.opt.splitbelow = true
+vim.opt.splitright = true
+
+vim.opt.wildmenu = true
+vim.opt.wildmode = "longest:full,full"
+vim.opt.diffopt:append("linematch:60")
+vim.opt.redrawtime = 10000
+vim.opt.maxmempattern = 20000
+
+-- vim.cmd("set completeopt+=noselect")
