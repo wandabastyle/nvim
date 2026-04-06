@@ -22,8 +22,6 @@ vim.lsp.config["ts_ls"] = {
 
 vim.lsp.enable({ "lua_ls", "nil_ls", "rust_analyzer", "basedpyright", "ts_ls" })
 
-vim.keymap.set("n", "<leader>lf", vim.lsp.buf.format)
-
 vim.api.nvim_create_autocmd("LspAttach", {
 	callback = function(ev)
 		local client = vim.lsp.get_client_by_id(ev.data.client_id)
