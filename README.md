@@ -1,120 +1,127 @@
-# Neovim Config
+# Minimal Neovim Config (Linux / Arch)
 
-> [!WARNING]
-> This config targets **Neovim 0.13.x** APIs (nightly/pre-release at the time of writing).
-> Older versions (including 0.12.x stable) can fail with missing API errors.
+A personal, modular Neovim configuration written in Lua for Linux (primarily Arch Linux).
 
-This repository contains a minimal Lua Neovim setup with modular config files, built-in LSP/completion, and a reusable in-editor run/build terminal workflow.
+This setup is for users who want a practical editor with LSP, formatting, linting, and a clean git workflow without heavy Neovim distributions or frameworks.
 
-## Structure
+## Features
 
-- `init.lua` — bootstrap + module loading only
-- `lua/config/options.lua` — editor options / `completeopt`
-- `lua/config/keymaps.lua` — global mappings
-- `lua/config/commands.lua` — user commands (`:ProjectRun`, `:ProjectBuild`)
-- `lua/config/autocmds.lua` — global autocmd placeholder
-- `lua/features/project_terminal.lua` — reusable Neovim terminal split workflow
-- `lua/plugins/init.lua` — plugin install list via `vim.pack.add`
-- `lua/plugins/ui.lua` — colorscheme/UI/picker/oil/gitsigns setup
-- `lua/plugins/editing.lua` — autopairs + optional `nvim-cmp` integration hook
-- `lua/plugins/lsp.lua` — LSP server setup, completion mappings, `LspAttach`
+- Built-in LSP setup for common languages.
+- Formatting and linting workflow integrated into editor actions.
+- Git-oriented workflow, including quick run/build commands and commit support.
+- AI commit message generation from git diff using Ollama.
+- Modular structure (`init.lua` bootstrap + `lua/config/*` organization).
 
-## Plugins
+## Requirements
 
-Installed with `vim.pack.add`:
+Required base tools:
 
-- `folke/tokyonight.nvim`
-- `nvim-tree/nvim-web-devicons`
-- `nvim-lualine/lualine.nvim`
-- `neovim/nvim-lspconfig`
-- `echasnovski/mini.pick`
-- `stevearc/oil.nvim`
-- `lewis6991/gitsigns.nvim`
-- `windwp/nvim-autopairs`
+- `neovim-git`
+- `git`
+- `ripgrep`
+- `fd`
+- `nodejs` (required by many language servers)
+- `python` (for scripts)
+- `stylua` (Lua formatter)
+- `shellcheck`
+- `shfmt` (shell formatting)
+- `clang` or `clangd`
 
-## Project run/build terminal
+LSP servers/tools used by this config:
 
-- Commands:
-  - `:ProjectRun`
-  - `:ProjectBuild`
-- Opens a **bottom horizontal split** terminal (height 12) using Neovim's built-in terminal.
-- Reuses the same terminal buffer/window when possible.
-- `:ProjectRun` / `:ProjectBuild` sends commands to the project terminal and then restores focus to the previously active editing window.
-- Terminal close mappings:
-  - `q` in normal mode
-  - `<C-q>` in terminal mode
-- Project behavior:
-  - Rust (`Cargo.toml` found):
-    - Run: `cargo run`
-    - Build: `cargo build`
-  - Python:
-    - Run: `python <current-file>`
-    - Build: warns that there is no default Python build target
-  - Unknown project: warning notification
-
-Default mappings:
-
-- `<leader>rr` → `:ProjectRun`
-- `<leader>rb` → `:ProjectBuild`
-- `<leader>rc` → close project terminal window
-- `<leader>rt` → focus project terminal window (enters terminal insert mode)
-
-## Consistent Enter behavior in braces
-
-`nvim-autopairs` handles newline splitting between pairs like `{|}` when pressing `<CR>`.
-
-This config routes insert-mode `<CR>` through a single mapping:
-
-- popup menu visible (`pumvisible() == 1`) → confirm completion (`<C-y>`)
-- popup menu hidden → run `require("nvim-autopairs").autopairs_cr()`
-
-This keeps brace newline behavior consistent across languages (Rust, C/C++, JavaScript, etc.) while preserving completion confirmation behavior.
-
-`nvim-autopairs` is configured with:
-
-- `check_ts = true` for Treesitter-aware pairing behavior
-- `enable_check_bracket_line = false` so `<CR>` can still split `{|}` in common inline cases
-
-If `hrsh7th/nvim-cmp` is installed later, `lua/plugins/editing.lua` auto-hooks
-`cmp.event:on("confirm_done", ...)` to keep completion-confirm pair insertion working.
-
-## LSP and completion
-
-Built-in Neovim LSP (no `nvim-cmp`) with:
-
-- `lua_ls`
+- `lua-language-server` (`lua_ls`)
 - `nixd`
-- `rust_analyzer`
-- `pylsp`
-- `ts_ls` (TypeScript/JavaScript)
+- `rust-analyzer`
+- `python-lsp-server` (`pylsp`)
+- `typescript` + `typescript-language-server` (`ts_ls`)
 
-### TypeScript LSP server install (`ts_ls`)
+Optional but recommended:
 
-`ts_ls` in `nvim-lspconfig` uses the `typescript-language-server` binary (plus TypeScript/tsserver).
+- `lazygit`
+- `ollama`
 
-On Arch Linux (including `yay`-based installs), install:
+Arch Linux / `yay` example (base tools + LSP tools):
 
 ```bash
-yay -S typescript typescript-language-server
+yay -S neovim-git git ripgrep fd nodejs python stylua shellcheck shfmt clang lua-language-server nixd rust-analyzer python-lsp-server typescript typescript-language-server lazygit ollama
 ```
 
-Then restart Neovim and open a `.ts`, `.tsx`, `.js`, or `.jsx` file to attach the server.
+## Installation
 
-Behavior kept from previous config:
+Back up your existing Neovim config first if you already have one:
 
-- `LspAttach` buffer-local mappings (`K`, `gd`, `gr`, diagnostics, rename/code actions)
-- manual completion trigger: `<C-Space>`
-- aggressive auto-trigger completion by widening trigger characters to printable ASCII
-- popup control mappings in insert mode:
-  - `<Tab>` / `<S-Tab>` navigate popup when visible
-  - `<CR>` confirms popup selection when visible
-
-## After pulling updates
-
-Inside Neovim, run:
-
-```vim
-:packupdate
+```bash
+mv ~/.config/nvim ~/.config/nvim.bak
 ```
 
-(or your usual `vim.pack` update flow) to fetch `nvim-autopairs` and remove old plugin state.
+Clone this repository to `~/.config/nvim`:
+
+```bash
+git clone <your-repo-url> ~/.config/nvim
+```
+
+Start Neovim:
+
+```bash
+nvim
+```
+
+## Keybindings
+
+This is a concise overview of keymaps defined in the config.
+
+### General
+
+| Key | Action |
+| --- | --- |
+| `<leader>w` | Save file |
+| `<leader>q` | Quit window |
+| `<leader>y` | Yank to system clipboard |
+| `<leader>d` | Delete to system clipboard |
+| `<leader>ff` | Find files (`mini.pick`) |
+| `<leader>fb` | Find buffers (`mini.pick`) |
+| `<leader>fg` | Live grep (`mini.pick`) |
+| `<leader>h` | Help tags picker |
+| `<leader>e` | Open file explorer (`Oil`) |
+| `<C-Up>` / `<C-Down>` | Move current line up/down |
+| `<Esc>` | Clear search highlight |
+
+### LSP
+
+| Key | Action |
+| --- | --- |
+| `K` | Hover documentation |
+| `gd` | Go to definition |
+| `gr` | Find references |
+| `<leader>lf` | Format buffer |
+| `<leader>lr` | Rename symbol |
+| `<leader>la` | Code action |
+| `<leader>ld` | Line diagnostics (floating window) |
+| `[d` / `]d` | Previous / next diagnostic |
+| `<C-Space>` (insert) | Trigger completion |
+
+### Git
+
+| Key | Action |
+| --- | --- |
+| `<leader>gw` | Save current file and create git commit (AI-assisted message prompt) |
+
+### AI / Commit
+
+| Key | Action |
+| --- | --- |
+| `<leader>gw` | Generate commit message from diff, edit it, then run `git commit -a -m` |
+
+## AI Commit Messages (Ollama)
+
+The commit helper uses a local Python script to generate commit message suggestions from the current git diff.
+
+- Ollama must be installed and running.
+- The config includes user-systemd integration to start/stop `ollama.service` and manage a delayed stop timer.
+- Trigger with `<leader>gw`, review/edit the suggested message, then confirm commit.
+
+## Notes / Philosophy
+
+- Minimal and maintainable by design.
+- No heavy frameworks or starter distros (for example, no LazyVim or AstroNvim).
+- Assumes the user is comfortable with Neovim basics and editing Lua config files.
