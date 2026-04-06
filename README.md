@@ -32,7 +32,7 @@ LSP servers/tools used by this config:
 - `lua-language-server` (`lua_ls`)
 - `nixd` (`nixd`)
 - `rust-analyzer`
-- `python-lsp-server` (`pylsp`)
+- `basedpyright` (`basedpyright`)
 - `typescript` + `typescript-language-server` (`ts_ls`)
 
 Optional but recommended:
@@ -43,7 +43,7 @@ Optional but recommended:
 Arch Linux / `yay` example (base tools + LSP tools):
 
 ```bash
-yay -S neovim-git git ripgrep fd nodejs python stylua shellcheck shfmt clang lua-language-server nixd rust-analyzer python-lsp-server typescript typescript-language-server lazygit ollama
+yay -S neovim-git git ripgrep fd nodejs python stylua shellcheck shfmt clang lua-language-server nixd rust-analyzer basedpyright typescript typescript-language-server lazygit ollama
 ```
 
 ## Installation

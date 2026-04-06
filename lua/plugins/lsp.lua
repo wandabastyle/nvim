@@ -12,28 +12,15 @@ vim.lsp.config["rust_analyzer"] = {
 	capabilities = capabilities,
 }
 
-vim.lsp.config["pylsp"] = {
+vim.lsp.config["basedpyright"] = {
 	capabilities = capabilities,
-	settings = {
-		pylsp = {
-			plugins = {
-				pycodestyle = { enabled = false },
-				mccabe = { enabled = false },
-				pyflakes = { enabled = false },
-				autopep8 = { enabled = false },
-				yapf = { enabled = false },
-				black = { enabled = true },
-				pylsp_mypy = { enabled = false },
-			},
-		},
-	},
 }
 
 vim.lsp.config["ts_ls"] = {
 	capabilities = capabilities,
 }
 
-vim.lsp.enable({ "lua_ls", "nixd", "rust_analyzer", "pylsp", "ts_ls" })
+vim.lsp.enable({ "lua_ls", "nixd", "rust_analyzer", "basedpyright", "ts_ls" })
 
 vim.keymap.set("n", "<leader>lf", vim.lsp.buf.format)
 
