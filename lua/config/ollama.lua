@@ -14,7 +14,7 @@ local function systemctl_available()
     return true
   end
 
-  notify("systemctl is unavailable; skipping Ollama systemd controls", vim.log.levels.WARN)
+  notify("systemctl unavailable", vim.log.levels.WARN)
   return false
 end
 
@@ -42,10 +42,7 @@ local function run_user_systemctl(args, on_exit)
         stderr_text = "unknown error"
       end
 
-      notify(
-        "systemctl --user " .. table.concat(args, " ") .. " failed: " .. stderr_text,
-        vim.log.levels.WARN
-      )
+      notify(table.concat(args, " ") .. " failed: " .. stderr_text, vim.log.levels.WARN)
     end
 
     if on_exit then
@@ -62,18 +59,22 @@ function M.cancel_scheduled_stop(on_exit)
   run_user_systemctl({ "stop", STOP_TIMER }, on_exit)
 end
 
+function M.start_stop_timer(on_exit)
+  run_user_systemctl({ "start", STOP_TIMER }, on_exit)
+end
+
 function M.schedule_delayed_stop(on_exit)
   M.cancel_scheduled_stop(function(stop_ok)
     M.start_stop_timer(function(start_ok)
+      if not start_ok then
+        notify("could not arm ollama-stop.timer", vim.log.levels.WARN)
+      end
+
       if on_exit then
         on_exit(stop_ok and start_ok)
       end
     end)
   end)
-end
-
-function M.start_stop_timer(on_exit)
-  run_user_systemctl({ "start", STOP_TIMER }, on_exit)
 end
 
 function M.ensure_running(callback)
@@ -82,16 +83,6 @@ function M.ensure_running(callback)
       callback(ok)
     end
   end)
-end
-
-function M.on_vim_enter()
-  M.cancel_scheduled_stop(function()
-    M.start_service()
-  end)
-end
-
-function M.on_vim_leave_pre()
-  M.schedule_delayed_stop()
 end
 
 return M

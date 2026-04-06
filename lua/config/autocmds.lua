@@ -14,16 +14,9 @@ vim.api.nvim_create_autocmd("FileType", {
   end,
 })
 
-vim.api.nvim_create_autocmd("VimEnter", {
-  group = ollama_lifecycle,
-  callback = function()
-    ollama.on_vim_enter()
-  end,
-})
-
 vim.api.nvim_create_autocmd("VimLeavePre", {
   group = ollama_lifecycle,
   callback = function()
-    ollama.on_vim_leave_pre()
+    ollama.schedule_delayed_stop()
   end,
 })
