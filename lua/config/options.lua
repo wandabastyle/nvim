@@ -52,6 +52,7 @@ vim.opt.timeoutlen = 500
 vim.opt.ttimeoutlen = 0
 vim.opt.autoread = true
 vim.opt.autowrite = false
+vim.opt.confirm = true
 
 vim.opt.hidden = true
 vim.opt.errorbells = false
