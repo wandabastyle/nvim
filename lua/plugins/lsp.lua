@@ -4,7 +4,7 @@ vim.lsp.config["lua_ls"] = {
 	capabilities = capabilities,
 }
 
-vim.lsp.config["nixd"] = {
+vim.lsp.config["nil_ls"] = {
 	capabilities = capabilities,
 }
 
@@ -20,7 +20,7 @@ vim.lsp.config["ts_ls"] = {
 	capabilities = capabilities,
 }
 
-vim.lsp.enable({ "lua_ls", "nixd", "rust_analyzer", "basedpyright", "ts_ls" })
+vim.lsp.enable({ "lua_ls", "nil_ls", "rust_analyzer", "basedpyright", "ts_ls" })
 
 vim.keymap.set("n", "<leader>lf", vim.lsp.buf.format)
 
@@ -35,8 +35,12 @@ vim.api.nvim_create_autocmd("LspAttach", {
 		vim.keymap.set("n", "<leader>lr", vim.lsp.buf.rename, opts)
 		vim.keymap.set("n", "<leader>la", vim.lsp.buf.code_action, opts)
 		vim.keymap.set("n", "<leader>ld", vim.diagnostic.open_float, opts)
-		vim.keymap.set("n", "[d", vim.diagnostic.goto_prev, opts)
-		vim.keymap.set("n", "]d", vim.diagnostic.goto_next, opts)
+		vim.keymap.set("n", "[d", function()
+			vim.diagnostic.jump({ count = -1 })
+		end, opts)
+		vim.keymap.set("n", "]d", function()
+			vim.diagnostic.jump({ count = 1 })
+		end, opts)
 
 		if client:supports_method("textDocument/semanticTokens/full")
 			or client:supports_method("textDocument/semanticTokens/range") then
