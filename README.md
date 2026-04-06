@@ -101,6 +101,7 @@ This is a concise overview of keymaps defined in the config.
 | `<C-Space>` (insert) | Trigger completion |
 
 Completion is powered by `blink.cmp`, and LSP capabilities are merged via `require("blink.cmp").get_lsp_capabilities(...)`.
+Snippet expansion uses Neovim's native `vim.snippet` engine (no external snippet engine/plugin required).
 
 ### Git
 
