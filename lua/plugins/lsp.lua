@@ -95,7 +95,7 @@ vim.api.nvim_create_autocmd("LspAttach", {
 
 		if client:supports_method("textDocument/semanticTokens/full")
 			or client:supports_method("textDocument/semanticTokens/range") then
-			vim.lsp.semantic_tokens.start(ev.buf, client.id)
+			vim.lsp.semantic_tokens.enable(true, { bufnr = ev.buf, client_id = client.id })
 		end
 	end,
 })
