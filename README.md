@@ -6,7 +6,7 @@ This setup is for users who want a practical editor with LSP, formatting, lintin
 
 ## Features
 
-- Built-in LSP setup for common languages.
+- Built-in LSP setup for common languages with completion powered by `blink.cmp`.
 - Formatting and linting workflow integrated into editor actions.
 - Git-oriented workflow, including quick run/build commands and commit support.
 - AI commit message generation from git diff using Ollama.
@@ -30,9 +30,9 @@ Required base tools:
 LSP servers/tools used by this config:
 
 - `lua-language-server` (`lua_ls`)
-- `nil-git` (`nil_ls`)
+- `nil_ls` (`nil`)
 - `rust-analyzer`
-- `python-lsp-server` (`pylsp`)
+- `basedpyright` (`basedpyright`)
 - `typescript` + `typescript-language-server` (`ts_ls`)
 
 Optional but recommended:
@@ -43,7 +43,7 @@ Optional but recommended:
 Arch Linux / `yay` example (base tools + LSP tools):
 
 ```bash
-yay -S neovim-git git ripgrep fd nodejs python stylua shellcheck shfmt clang lua-language-server nil-git rust-analyzer python-lsp-server typescript typescript-language-server lazygit ollama
+yay -S neovim-git git ripgrep fd nodejs python stylua shellcheck shfmt clang lua-language-server nil rust-analyzer basedpyright typescript typescript-language-server lazygit ollama
 ```
 
 ## Installation
@@ -99,6 +99,9 @@ This is a concise overview of keymaps defined in the config.
 | `<leader>ld` | Line diagnostics (floating window) |
 | `[d` / `]d` | Previous / next diagnostic |
 | `<C-Space>` (insert) | Trigger completion |
+
+Completion is powered by `blink.cmp`, and LSP capabilities are merged via `require("blink.cmp").get_lsp_capabilities(...)`.
+Snippet expansion uses Neovim's native `vim.snippet` engine (no external snippet engine/plugin required).
 
 ### Git
 
