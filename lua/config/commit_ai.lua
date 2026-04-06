@@ -1,4 +1,5 @@
 local M = {}
+local ollama = require("config.ollama")
 
 -- Return the directory of the current buffer, or the current working directory.
 local function current_buffer_dir()
@@ -106,49 +107,51 @@ local function git_write()
       return
     end
 
-    run_commit_message_ai(git_root, function(suggested_message, err)
-      if err then
-        vim.notify(err, vim.log.levels.ERROR)
-        return
-      end
+    ollama.ensure_running(function()
+      run_commit_message_ai(git_root, function(suggested_message, err)
+        if err then
+          vim.notify(err, vim.log.levels.ERROR)
+          return
+        end
 
-      vim.ui.input(
-        {
-          prompt = "Git commit message: ",
-          default = suggested_message,
-        },
-        function(input)
-          if input == nil then
-            vim.notify("Commit canceled", vim.log.levels.INFO)
-            return
-          end
-
-          local final_message = vim.trim(input)
-
-          if final_message == "" then
-            vim.notify("Empty commit message. Aborted.", vim.log.levels.INFO)
-            return
-          end
-
-          commit_with_message(git_root, final_message, function(ok, output)
-            if ok then
-              local success_text = "Commit created successfully"
-
-              if output ~= "" then
-                success_text = success_text .. ": " .. output
-              end
-
-              vim.notify(success_text, vim.log.levels.INFO)
+        vim.ui.input(
+          {
+            prompt = "Git commit message: ",
+            default = suggested_message,
+          },
+          function(input)
+            if input == nil then
+              vim.notify("Commit canceled", vim.log.levels.INFO)
               return
             end
 
-            vim.notify(
-              "git commit failed: " .. output,
-              vim.log.levels.ERROR
-            )
-          end)
-        end
-      )
+            local final_message = vim.trim(input)
+
+            if final_message == "" then
+              vim.notify("Empty commit message. Aborted.", vim.log.levels.INFO)
+              return
+            end
+
+            commit_with_message(git_root, final_message, function(ok, output)
+              if ok then
+                local success_text = "Commit created successfully"
+
+                if output ~= "" then
+                  success_text = success_text .. ": " .. output
+                end
+
+                vim.notify(success_text, vim.log.levels.INFO)
+                return
+              end
+
+              vim.notify(
+                "git commit failed: " .. output,
+                vim.log.levels.ERROR
+              )
+            end)
+          end
+        )
+      end)
     end)
   end)
 end
