@@ -13,4 +13,7 @@ vim.pack.add({
 	{ src = "https://github.com/ethanholz/nvim-lastplace" },
 	{ src = "https://github.com/nvim-treesitter/nvim-treesitter" },
 	{ src = "https://github.com/folke/which-key.nvim" },
+	{ src = "https://github.com/rcarriga/nvim-notify" },
+	{ src = "https://github.com/MunifTanjim/nui.nvim" },
+	{ src = "https://github.com/folke/noice.nvim" },
 })
