@@ -1,10 +1,15 @@
 local pick = require("mini.pick").builtin
 local project_terminal = require("features.project_terminal")
+local wk = require("which-key")
 
-vim.keymap.set("n", "<leader>w", ":write<CR>")
-vim.keymap.set("n", "<leader>q", ":quit<CR>")
-vim.keymap.set({ "n", "v", "x" }, "<leader>y", '"+y<CR>')
-vim.keymap.set({ "n", "v", "x" }, "<leader>d", '"+d<CR>')
+vim.keymap.set("n", "<leader>w", "<cmd>write<CR>", { desc = "Save file" })
+vim.keymap.set("n", "<leader>q", "<cmd>quit<CR>", { desc = "Quit window" })
+vim.keymap.set({ "n", "v", "x" }, "<leader>y", '"+y<CR>', { desc = "Yank to clipboard" })
+vim.keymap.set({ "n", "v", "x" }, "<leader>d", '"+d<CR>', { desc = "Delete to clipboard" })
+
+vim.keymap.set("n", "<leader>?", function()
+	wk.show({ global = false })
+end, { desc = "Buffer keymaps" })
 
 vim.keymap.set("n", "<leader>rr", "<cmd>ProjectRun<CR>", { silent = true, desc = "Run project/current file" })
 vim.keymap.set("n", "<leader>rb", "<cmd>ProjectBuild<CR>", { silent = true, desc = "Build project" })
@@ -16,11 +21,11 @@ vim.keymap.set("n", "<C-Up>", ":m .-2<CR>==", { silent = true, desc = "Move line
 
 vim.keymap.set("i", "yy", "<Esc>", { noremap = true, silent = true, desc = "Exit insert mode" })
 
-vim.keymap.set("n", "<leader>ff", pick.files)
-vim.keymap.set("n", "<leader>fb", pick.buffers)
-vim.keymap.set("n", "<leader>fg", pick.grep)
-vim.keymap.set("n", "<leader>h", pick.help)
+vim.keymap.set("n", "<leader>ff", pick.files, { desc = "Find files" })
+vim.keymap.set("n", "<leader>fb", pick.buffers, { desc = "Find buffers" })
+vim.keymap.set("n", "<leader>fg", pick.grep, { desc = "Live grep" })
+vim.keymap.set("n", "<leader>h", pick.help, { desc = "Help tags" })
 
-vim.keymap.set("n", "<leader>e", ":Oil<CR>")
+vim.keymap.set("n", "<leader>e", "<cmd>Oil<CR>", { desc = "Open explorer" })
 
-vim.keymap.set("n", "<Esc>", "<Esc>:nohlsearch<CR>", { silent = true })
+vim.keymap.set("n", "<Esc>", "<Esc>:nohlsearch<CR>", { silent = true, desc = "Clear search highlight" })

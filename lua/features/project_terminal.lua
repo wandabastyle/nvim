@@ -6,6 +6,10 @@ local M = {
 	},
 }
 
+local function has_executable(bin)
+	return vim.fn.executable(bin) == 1
+end
+
 local function find_project_root(markers, startpath)
 	local found = vim.fs.find(markers, { upward = true, path = startpath, stop = vim.uv.os_homedir() })
 	if #found == 0 then
@@ -19,22 +23,40 @@ local function project_command(mode)
 	local from = file ~= "" and vim.fs.dirname(file) or vim.fn.getcwd()
 	local root = find_project_root({ "Cargo.toml" }, from)
 
-	if root then
+	if root and has_executable("cargo") then
 		return mode == "build" and "cargo build" or "cargo run", root
 	end
 
+	local node_root = find_project_root({ "package.json" }, from)
+	if node_root and has_executable("npm") then
+		return mode == "build" and "npm run build" or "npm run dev", node_root
+	end
+
+	local make_root = find_project_root({ "Makefile", "makefile" }, from)
+	if make_root and has_executable("make") then
+		return mode == "build" and "make" or "make run", make_root
+	end
+
+	local python_root = find_project_root({ "pyproject.toml", "requirements.txt" }, from)
+	local python_bin = has_executable("python3") and "python3" or "python"
+
 	if vim.bo.filetype == "python" and file ~= "" then
+		if not has_executable(python_bin) then
+			return nil, nil, "Python executable is unavailable"
+		end
+
 		if mode == "build" then
 			return nil, nil, "Python has no default build target (use :ProjectRun)"
 		end
-		return ("python %s"):format(vim.fn.shellescape(file)), vim.fn.getcwd()
+
+		return ("%s %s"):format(python_bin, vim.fn.shellescape(file)), python_root or vim.fn.getcwd()
 	end
 
 	if mode == "build" then
-		return nil, nil, "No supported build target found for this project"
+		return nil, nil, "No supported build target found (Cargo/npm/make)"
 	end
 
-	return nil, nil, "No supported project type found (Rust/Cargo or Python file)"
+	return nil, nil, "No supported project type found (Cargo, npm, make, or Python file)"
 end
 
 local function ensure_terminal_window()

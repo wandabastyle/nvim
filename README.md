@@ -78,6 +78,7 @@ This is a concise overview of keymaps defined in the config.
 | `<leader>q` | Quit window |
 | `<leader>y` | Yank to system clipboard |
 | `<leader>d` | Delete to system clipboard |
+| `<leader>?` | Show buffer keymaps (`which-key`) |
 | `<leader>ff` | Find files (`mini.pick`) |
 | `<leader>fb` | Find buffers (`mini.pick`) |
 | `<leader>fg` | Live grep (`mini.pick`) |
@@ -97,6 +98,8 @@ This is a concise overview of keymaps defined in the config.
 | `<leader>lr` | Rename symbol |
 | `<leader>la` | Code action |
 | `<leader>ld` | Line diagnostics (floating window) |
+| `<leader>ll` | Diagnostics list (location list) |
+| `<leader>ls` | Workspace symbol search (prompt) |
 | `[d` / `]d` | Previous / next diagnostic |
 | `<C-Space>` (insert) | Trigger completion |
 
