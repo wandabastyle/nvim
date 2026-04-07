@@ -31,7 +31,6 @@ vim.opt.winborder = "rounded"
 vim.opt.winblend = 0
 vim.opt.conceallevel = 0
 vim.opt.concealcursor = ""
-vim.opt.lazyredraw = true
 vim.opt.synmaxcol = 300
 vim.opt.fillchars = { eob = " "}
 
