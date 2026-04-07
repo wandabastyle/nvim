@@ -12,4 +12,5 @@ vim.pack.add({
 	{ src = "https://github.com/Vimjas/vim-python-pep8-indent" },
 	{ src = "https://github.com/ethanholz/nvim-lastplace" },
 	{ src = "https://github.com/nvim-treesitter/nvim-treesitter" },
+	{ src = "https://github.com/folke/which-key.nvim" },
 })

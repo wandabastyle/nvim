@@ -27,18 +27,18 @@ vim.api.nvim_create_autocmd("LspAttach", {
 		local client = vim.lsp.get_client_by_id(ev.data.client_id)
 		local opts = { buffer = ev.buf }
 
-		vim.keymap.set("n", "K", vim.lsp.buf.hover, opts)
-		vim.keymap.set("n", "gd", vim.lsp.buf.definition, opts)
-		vim.keymap.set("n", "gr", vim.lsp.buf.references, opts)
-		vim.keymap.set("n", "<leader>lr", vim.lsp.buf.rename, opts)
-		vim.keymap.set("n", "<leader>la", vim.lsp.buf.code_action, opts)
-		vim.keymap.set("n", "<leader>ld", vim.diagnostic.open_float, opts)
+		vim.keymap.set("n", "K", vim.lsp.buf.hover, vim.tbl_extend("force", opts, { desc = "Hover documentation" }))
+		vim.keymap.set("n", "gd", vim.lsp.buf.definition, vim.tbl_extend("force", opts, { desc = "Go to definition" }))
+		vim.keymap.set("n", "gr", vim.lsp.buf.references, vim.tbl_extend("force", opts, { desc = "Find references" }))
+		vim.keymap.set("n", "<leader>lr", vim.lsp.buf.rename, vim.tbl_extend("force", opts, { desc = "Rename symbol" }))
+		vim.keymap.set("n", "<leader>la", vim.lsp.buf.code_action, vim.tbl_extend("force", opts, { desc = "Code action" }))
+		vim.keymap.set("n", "<leader>ld", vim.diagnostic.open_float, vim.tbl_extend("force", opts, { desc = "Line diagnostics" }))
 		vim.keymap.set("n", "[d", function()
 			vim.diagnostic.jump({ count = -1 })
-		end, opts)
+		end, vim.tbl_extend("force", opts, { desc = "Previous diagnostic" }))
 		vim.keymap.set("n", "]d", function()
 			vim.diagnostic.jump({ count = 1 })
-		end, opts)
+		end, vim.tbl_extend("force", opts, { desc = "Next diagnostic" }))
 
 		if client:supports_method("textDocument/semanticTokens/full")
 			or client:supports_method("textDocument/semanticTokens/range") then
