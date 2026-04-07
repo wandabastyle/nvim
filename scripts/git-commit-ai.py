@@ -5,6 +5,9 @@ import subprocess
 import sys
 import time
 import urllib.request
+from collections.abc import Sequence
+from http.client import HTTPResponse
+from typing import Literal, cast
 
 OLLAMA_URL = "http://127.0.0.1:11434/api/generate"
 OLLAMA_TAGS_URL = "http://127.0.0.1:11434/api/tags"
@@ -13,7 +16,7 @@ MAX_DIFF_CHARS = 12000
 SUBMODULE_LOG_COUNT = 5
 
 
-def run(cmd):
+def run(cmd: Sequence[str]) -> str | None:
     """
     Run a command and return stripped stdout.
 
@@ -31,7 +34,7 @@ def run(cmd):
     return result.stdout.strip()
 
 
-def get_diff():
+def get_diff() -> tuple[Literal["staged", "working"] | None, str | None]:
     """
     Return the best available git diff.
 
@@ -71,7 +74,7 @@ def get_diff():
     return None, None
 
 
-def get_changed_files():
+def get_changed_files() -> str:
     """
     Return a short git status listing.
 
@@ -90,7 +93,7 @@ def get_changed_files():
     return status
 
 
-def get_submodule_logs():
+def get_submodule_logs() -> str:
     """
     Return short commit logs for changed submodules.
 
@@ -106,7 +109,7 @@ def get_submodule_logs():
     if not status:
         return ""
 
-    logs = []
+    logs: list[str] = []
 
     for line in status.splitlines():
         line = line.strip()
@@ -145,21 +148,21 @@ def get_submodule_logs():
     return "\n\n".join(logs)
 
 
-def ollama_ping():
+def ollama_ping() -> bool:
     """
     Return True if the local Ollama server is responding.
     """
     try:
         request = urllib.request.Request(OLLAMA_TAGS_URL)
 
-        with urllib.request.urlopen(request, timeout=1.2) as response:
-            return response.status == 200
+        with cast(HTTPResponse, urllib.request.urlopen(request, timeout=1.2)):
+            return True
 
     except Exception:
         return False
 
 
-def ensure_ollama():
+def ensure_ollama() -> None:
     """
     Ensure Ollama is running through the user systemd service.
 
@@ -212,7 +215,12 @@ def ensure_ollama():
         )
 
 
-def ask_ollama(diff_kind, changed_files, diff_text, submodule_logs):
+def ask_ollama(
+    diff_kind: Literal["staged", "working"],
+    changed_files: str,
+    diff_text: str,
+    submodule_logs: str,
+) -> str | None:
     """
     Ask Ollama for a single commit message suggestion.
 
@@ -244,7 +252,7 @@ Diff:
 {trimmed_diff}
 """
 
-    payload = {
+    payload: dict[str, object] = {
         "model": MODEL,
         "prompt": prompt,
         "stream": False,
@@ -258,10 +266,22 @@ Diff:
         method="POST",
     )
 
-    with urllib.request.urlopen(request, timeout=80) as response:
-        data = json.load(response)
+    with cast(HTTPResponse, urllib.request.urlopen(request, timeout=80)) as response:
+        body = response.read().decode("utf-8")
 
-    text = data.get("response", "").strip()
+    parsed = cast(object, json.loads(body))
+
+    if not isinstance(parsed, dict):
+        return None
+
+    data_obj = cast(dict[str, object], parsed)
+
+    text_obj = data_obj.get("response")
+
+    if not isinstance(text_obj, str):
+        return None
+
+    text = text_obj.strip()
 
     if not text:
         return None
@@ -272,7 +292,7 @@ Diff:
     return first_line
 
 
-def main():
+def main() -> int:
     """Script entry point."""
     inside = run([
         "git",
@@ -287,6 +307,9 @@ def main():
     diff_kind, diff_text = get_diff()
 
     if not diff_text:
+        return 0
+
+    if diff_kind is None:
         return 0
 
     changed_files = get_changed_files()
