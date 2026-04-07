@@ -107,13 +107,13 @@ Snippet expansion uses Neovim's native `vim.snippet` engine (no external snippet
 
 | Key | Action |
 | --- | --- |
-| `<leader>gw` | Save current file and create git commit (AI-assisted message prompt) |
+| `<leader>gm` | Save current file and create git commit (AI-assisted message prompt) |
 
 ### AI / Commit
 
 | Key | Action |
 | --- | --- |
-| `<leader>gw` | Generate commit message from diff, edit it, then run `git commit -a -m` |
+| `<leader>gm` | Generate commit message from diff, edit it, then run `git commit -a -m` |
 
 ## AI Commit Messages (Ollama)
 
@@ -121,7 +121,7 @@ The commit helper uses a local Python script to generate commit message suggesti
 
 - Ollama must be installed and running.
 - The config includes user-systemd integration to start/stop `ollama.service` and manage a delayed stop timer.
-- Trigger with `<leader>gw`, review/edit the suggested message, then confirm commit.
+- Trigger with `<leader>gm`, review/edit the suggested message, then confirm commit.
 
 ## Notes / Philosophy
 

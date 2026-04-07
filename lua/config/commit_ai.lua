@@ -1,5 +1,6 @@
 local M = {}
 local ollama = require("config.ollama")
+local commit_script = vim.fs.normalize((vim.env.HOME or "") .. "/.config/nvim/scripts/git-commit-ai.py")
 
 -- Return the directory of the current buffer, or the current working directory.
 local function current_buffer_dir()
@@ -41,10 +42,8 @@ end
 
 -- Run the local Python helper and return a suggested commit message.
 local function run_commit_message_ai(git_root, callback)
-  local script = vim.fn.expand("~/.config/nvim/scripts/git-commit-ai.py")
-
   vim.system(
-    { "python3", script },
+    { "python3", commit_script },
     { cwd = git_root, text = true },
     function(result)
       vim.schedule(function()
@@ -92,7 +91,7 @@ local function commit_with_message(git_root, message, callback)
   )
 end
 
--- Main workflow for <leader>gw: write buffer -> suggest -> edit -> commit.
+-- Main workflow for <leader>gm: write buffer -> suggest -> edit -> commit.
 local function git_write()
   local wrote_ok = pcall(vim.cmd, "write")
 
@@ -157,7 +156,7 @@ local function git_write()
 end
 
 function M.setup()
-  vim.keymap.set("n", "<leader>gw", git_write, {
+  vim.keymap.set("n", "<leader>gm", git_write, {
     desc = "Save and commit with AI message",
     silent = true,
   })
