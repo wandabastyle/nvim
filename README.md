@@ -16,7 +16,7 @@ This setup is for users who want a practical editor with LSP, formatting, lintin
 
 Required base tools:
 
-- `neovim-git`
+- `neovim-nightly-bin`
 - `git`
 - `ripgrep`
 - `fd`
@@ -43,8 +43,10 @@ Optional but recommended:
 Arch Linux / `yay` example (base tools + LSP tools):
 
 ```bash
-yay -S neovim-git git ripgrep fd nodejs python stylua shellcheck shfmt clang lua-language-server nil rust-analyzer basedpyright typescript typescript-language-server lazygit ollama
+yay -S neovim-nightly-bin git ripgrep fd nodejs python stylua shellcheck shfmt clang lua-language-server nil rust-analyzer basedpyright typescript typescript-language-server lazygit ollama
 ```
+
+`neovim-nightly-bin` is used to avoid occasional `tree-sitter` ABI mismatches that can happen with source-built `neovim-git` after system library upgrades.
 
 ## Installation
 
