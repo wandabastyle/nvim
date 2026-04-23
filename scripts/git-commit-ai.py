@@ -10,7 +10,7 @@ import urllib.request
 from collections.abc import Sequence
 from dataclasses import dataclass
 from http.client import HTTPResponse
-from typing import Literal, cast
+from typing import Literal, TypedDict, cast
 
 OLLAMA_URL = "http://127.0.0.1:11434/api/generate"
 OLLAMA_TAGS_URL = "http://127.0.0.1:11434/api/tags"
@@ -53,8 +53,48 @@ class SubmoduleChange:
     status: Literal["updated", "added", "removed"]
 
 
+@dataclass(frozen=True)
+class CommitModeInputs:
+    diff_kind: Literal["staged", "working"]
+    diff_text: str
+    changed_files: str
+    raw_diff: str
+    submodule_changes: list[SubmoduleChange]
+    submodule_context: str
+
+
+@dataclass(frozen=True)
+class PRModeInputs:
+    pr_diff: str
+    changed_files: str
+    pr_raw_diff: str
+    submodule_changes: list[SubmoduleChange]
+    submodule_context: str
+    pr_commits: str
+
+
+class HistoryProfile(TypedDict):
+    usable_subjects: int
+    verb_counts: dict[str, int]
+    token_counts: dict[str, int]
+
+
+class PathHistoryEntry(TypedDict):
+    watermark: str
+    profile: HistoryProfile
+    updated_at: int
+
+
+class HistoryCacheFile(TypedDict):
+    version: int
+    repos: dict[str, dict[str, PathHistoryEntry]]
+
+
 _history_cache_loaded = False
-_history_cache_data: dict[str, object] = {}
+_history_cache_data: HistoryCacheFile = {
+    "version": HISTORY_CACHE_VERSION,
+    "repos": {},
+}
 
 
 def run(cmd: Sequence[str]) -> str | None:
@@ -219,7 +259,111 @@ def get_history_cache_path() -> str:
     )
 
 
-def load_history_cache() -> dict[str, object]:
+def empty_history_profile() -> HistoryProfile:
+    """Return an empty history profile."""
+    return {
+        "usable_subjects": 0,
+        "verb_counts": {},
+        "token_counts": {},
+    }
+
+
+def empty_history_cache() -> HistoryCacheFile:
+    """Return an empty history cache payload."""
+    return {
+        "version": HISTORY_CACHE_VERSION,
+        "repos": {},
+    }
+
+
+def parse_int_map(obj: object) -> dict[str, int]:
+    """Return string-int dict from arbitrary object."""
+    if not isinstance(obj, dict):
+        return {}
+
+    obj_dict = cast(dict[str, object], obj)
+    parsed: dict[str, int] = {}
+
+    for key_obj, value_obj in obj_dict.items():
+        if not isinstance(value_obj, int):
+            continue
+
+        parsed[key_obj] = value_obj
+
+    return parsed
+
+
+def parse_history_profile(obj: object) -> HistoryProfile:
+    """Parse arbitrary object into a typed history profile."""
+    if not isinstance(obj, dict):
+        return empty_history_profile()
+
+    obj_dict = cast(dict[str, object], obj)
+    usable_obj = obj_dict.get("usable_subjects")
+
+    if isinstance(usable_obj, int):
+        usable_subjects = usable_obj
+    else:
+        usable_subjects = 0
+
+    return {
+        "usable_subjects": usable_subjects,
+        "verb_counts": parse_int_map(obj_dict.get("verb_counts")),
+        "token_counts": parse_int_map(obj_dict.get("token_counts")),
+    }
+
+
+def parse_path_history_entry(obj: object) -> PathHistoryEntry | None:
+    """Parse one per-path cache entry from arbitrary object."""
+    if not isinstance(obj, dict):
+        return None
+
+    obj_dict = cast(dict[str, object], obj)
+    watermark_obj = obj_dict.get("watermark")
+    updated_at_obj = obj_dict.get("updated_at")
+
+    if not isinstance(watermark_obj, str):
+        return None
+
+    if not isinstance(updated_at_obj, int):
+        updated_at_obj = int(time.time())
+
+    return {
+        "watermark": watermark_obj,
+        "profile": parse_history_profile(obj_dict.get("profile")),
+        "updated_at": updated_at_obj,
+    }
+
+
+def parse_history_repos(obj: object) -> dict[str, dict[str, PathHistoryEntry]]:
+    """Parse cache repos object into typed map."""
+    if not isinstance(obj, dict):
+        return {}
+
+    obj_dict = cast(dict[str, object], obj)
+    repos: dict[str, dict[str, PathHistoryEntry]] = {}
+
+    for repo_root_obj, repo_data_obj in obj_dict.items():
+        if not isinstance(repo_data_obj, dict):
+            continue
+
+        repo_data_dict = cast(dict[str, object], repo_data_obj)
+        repo_entries: dict[str, PathHistoryEntry] = {}
+
+        for submodule_path_obj, path_entry_obj in repo_data_dict.items():
+            parsed_entry = parse_path_history_entry(path_entry_obj)
+
+            if parsed_entry is None:
+                continue
+
+            repo_entries[submodule_path_obj] = parsed_entry
+
+        repos[repo_root_obj] = repo_entries
+
+    return repos
+
+
+def load_history_cache() -> HistoryCacheFile:
     """Load cache JSON once per process and return mutable cache data."""
     global _history_cache_loaded
     global _history_cache_data
@@ -235,36 +379,23 @@ def load_history_cache() -> dict[str, object]:
             parsed = cast(object, json.load(handle))
 
         if not isinstance(parsed, dict):
-            _history_cache_data = {
-                "version": HISTORY_CACHE_VERSION,
-                "repos": {},
-            }
+            _history_cache_data = empty_history_cache()
             return _history_cache_data
 
-        version = parsed.get("version")
+        parsed_dict = cast(dict[str, object], parsed)
+        version_obj = parsed_dict.get("version")
 
-        if version != HISTORY_CACHE_VERSION:
-            _history_cache_data = {
-                "version": HISTORY_CACHE_VERSION,
-                "repos": {},
-            }
+        if version_obj != HISTORY_CACHE_VERSION:
+            _history_cache_data = empty_history_cache()
             return _history_cache_data
-
-        repos = parsed.get("repos")
-
-        if not isinstance(repos, dict):
-            repos = {}
 
         _history_cache_data = {
             "version": HISTORY_CACHE_VERSION,
-            "repos": repos,
+            "repos": parse_history_repos(parsed_dict.get("repos")),
         }
 
     except Exception:
-        _history_cache_data = {
-            "version": HISTORY_CACHE_VERSION,
-            "repos": {},
-        }
+        _history_cache_data = empty_history_cache()
 
     return _history_cache_data
 
@@ -289,7 +420,7 @@ def save_history_cache() -> None:
                 sort_keys=True,
                 indent=2,
             )
-            handle.write("\n")
+            _ = handle.write("\n")
 
         os.replace(tmp_path, path)
 
@@ -347,7 +478,7 @@ def get_history_path_head(repo_root: str, submodule_path: str) -> str | None:
 
 def tokenize_history_text(text: str) -> list[str]:
     """Tokenize normalized description text for history profiling."""
-    tokens = re.findall(r"[a-z0-9][a-z0-9._-]*", text.lower())
+    tokens: list[str] = re.findall(r"[a-z0-9][a-z0-9._-]*", text.lower())
     blocked = {
         "the",
         "and",
@@ -364,7 +495,7 @@ def tokenize_history_text(text: str) -> list[str]:
     return [token for token in tokens if token not in blocked and len(token) > 2]
 
 
-def build_history_profile(repo_root: str, submodule_path: str) -> dict[str, object]:
+def build_history_profile(repo_root: str, submodule_path: str) -> HistoryProfile:
     """Build a per-submodule profile from recent parent repo subjects."""
     subjects = run([
         "git",
@@ -410,35 +541,26 @@ def build_history_profile(repo_root: str, submodule_path: str) -> dict[str, obje
     }
 
 
-def get_history_profile(submodule_path: str) -> dict[str, object]:
+def get_history_profile(submodule_path: str) -> HistoryProfile:
     """Get cached or rebuilt profile for a specific submodule path."""
     repo_root = resolve_history_repo_root()
 
     if not repo_root:
-        return {}
+        return empty_history_profile()
 
     cache_data = load_history_cache()
-    repos_obj = cache_data.get("repos")
-
-    if not isinstance(repos_obj, dict):
-        repos_obj = {}
-        cache_data["repos"] = repos_obj
-
+    repos_obj = cache_data["repos"]
     repo_entry_obj = repos_obj.get(repo_root)
 
-    if not isinstance(repo_entry_obj, dict):
+    if repo_entry_obj is None:
         repo_entry_obj = {}
         repos_obj[repo_root] = repo_entry_obj
 
     current_head = get_history_path_head(repo_root, submodule_path) or ""
     path_entry_obj = repo_entry_obj.get(submodule_path)
 
-    if isinstance(path_entry_obj, dict):
-        watermark = path_entry_obj.get("watermark")
-        profile_obj = path_entry_obj.get("profile")
-
-        if watermark == current_head and isinstance(profile_obj, dict):
-            return profile_obj
+    if path_entry_obj is not None and path_entry_obj["watermark"] == current_head:
+        return path_entry_obj["profile"]
 
     profile = build_history_profile(repo_root, submodule_path)
     repo_entry_obj[submodule_path] = {
@@ -645,36 +767,34 @@ def clean_submodule_description(subject: str) -> str:
     return text
 
 
-def history_affinity_score(text: str, history_profile: dict[str, object]) -> int:
+def history_affinity_score(text: str, history_profile: HistoryProfile) -> int:
     """Return history-based affinity score for a description."""
     score = 0
     lowered = text.lower()
     words = lowered.split()
 
-    verbs_obj = history_profile.get("verb_counts")
+    verbs_obj = history_profile["verb_counts"]
 
-    if isinstance(verbs_obj, dict) and words:
+    if words:
         first_word = words[0]
         first_count = verbs_obj.get(first_word)
 
         if isinstance(first_count, int):
             score += min(3, first_count)
 
-    tokens_obj = history_profile.get("token_counts")
+    tokens_obj = history_profile["token_counts"]
+    tokens = set(tokenize_history_text(text))
 
-    if isinstance(tokens_obj, dict):
-        tokens = set(tokenize_history_text(text))
+    for token in tokens:
+        token_count = tokens_obj.get(token)
 
-        for token in tokens:
-            token_count = tokens_obj.get(token)
-
-            if isinstance(token_count, int):
-                score += min(2, token_count)
+        if isinstance(token_count, int):
+            score += min(2, token_count)
 
     return score
 
 
-def score_submodule_description(text: str, history_profile: dict[str, object]) -> int:
+def score_submodule_description(text: str, history_profile: HistoryProfile) -> int:
     """Return a heuristic score for description quality."""
     score = 0
     words = text.split()
@@ -699,7 +819,7 @@ def score_submodule_description(text: str, history_profile: dict[str, object]) -
 
 def choose_submodule_description(
     commit_lines: Sequence[str],
-    history_profile: dict[str, object],
+    history_profile: HistoryProfile,
 ) -> str:
     """Choose the most descriptive normalized subject from commit lines."""
     best_description = ""
@@ -975,6 +1095,44 @@ def ensure_ollama() -> None:
         )
 
 
+def request_ollama_text(prompt: str, timeout: float = 80) -> str | None:
+    """Send prompt to Ollama and return response text."""
+    payload: dict[str, object] = {
+        "model": MODEL,
+        "prompt": prompt,
+        "stream": False,
+        "keep_alive": "10m",
+    }
+
+    request = urllib.request.Request(
+        OLLAMA_URL,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+
+    with cast(HTTPResponse, urllib.request.urlopen(request, timeout=timeout)) as response:
+        body = response.read().decode("utf-8")
+
+    parsed = cast(object, json.loads(body))
+
+    if not isinstance(parsed, dict):
+        return None
+
+    data_obj = cast(dict[str, object], parsed)
+    text_obj = data_obj.get("response")
+
+    if not isinstance(text_obj, str):
+        return None
+
+    text = text_obj.strip()
+
+    if not text:
+        return None
+
+    return text
+
+
 def ask_ollama(
     diff_kind: Literal["staged", "working"],
     changed_files: str,
@@ -1025,36 +1183,7 @@ Diff:
 {trimmed_diff}
 """
 
-    payload: dict[str, object] = {
-        "model": MODEL,
-        "prompt": prompt,
-        "stream": False,
-        "keep_alive": "10m",
-    }
-
-    request = urllib.request.Request(
-        OLLAMA_URL,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-
-    with cast(HTTPResponse, urllib.request.urlopen(request, timeout=80)) as response:
-        body = response.read().decode("utf-8")
-
-    parsed = cast(object, json.loads(body))
-
-    if not isinstance(parsed, dict):
-        return None
-
-    data_obj = cast(dict[str, object], parsed)
-
-    text_obj = data_obj.get("response")
-
-    if not isinstance(text_obj, str):
-        return None
-
-    text = text_obj.strip()
+    text = request_ollama_text(prompt)
 
     if not text:
         return None
@@ -1112,35 +1241,7 @@ Diff:
 {trimmed_diff}
 """
 
-    payload: dict[str, object] = {
-        "model": MODEL,
-        "prompt": prompt,
-        "stream": False,
-        "keep_alive": "10m",
-    }
-
-    request = urllib.request.Request(
-        OLLAMA_URL,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-
-    with cast(HTTPResponse, urllib.request.urlopen(request, timeout=80)) as response:
-        body = response.read().decode("utf-8")
-
-    parsed = cast(object, json.loads(body))
-
-    if not isinstance(parsed, dict):
-        return None
-
-    data_obj = cast(dict[str, object], parsed)
-    text_obj = data_obj.get("response")
-
-    if not isinstance(text_obj, str):
-        return None
-
-    text = text_obj.strip()
+    text = request_ollama_text(prompt)
 
     if not text:
         return None
@@ -1193,36 +1294,7 @@ Diff:
 {trimmed_diff}
 """
 
-    payload: dict[str, object] = {
-        "model": MODEL,
-        "prompt": prompt,
-        "stream": False,
-        "keep_alive": "10m",
-    }
-
-    request = urllib.request.Request(
-        OLLAMA_URL,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-
-    with cast(HTTPResponse, urllib.request.urlopen(request, timeout=80)) as response:
-        body = response.read().decode("utf-8")
-
-    parsed = cast(object, json.loads(body))
-
-    if not isinstance(parsed, dict):
-        return None
-
-    data_obj = cast(dict[str, object], parsed)
-
-    text_obj = data_obj.get("response")
-
-    if not isinstance(text_obj, str):
-        return None
-
-    text = text_obj.strip()
+    text = request_ollama_text(prompt)
 
     if not text:
         return None
@@ -1316,41 +1388,164 @@ Diff:
 {trimmed_diff}
 """
 
-    payload: dict[str, object] = {
-        "model": MODEL,
-        "prompt": prompt,
-        "stream": False,
-        "keep_alive": "10m",
-    }
-
-    request = urllib.request.Request(
-        OLLAMA_URL,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-
-    with cast(HTTPResponse, urllib.request.urlopen(request, timeout=80)) as response:
-        body = response.read().decode("utf-8")
-
-    parsed = cast(object, json.loads(body))
-
-    if not isinstance(parsed, dict):
-        return None
-
-    data_obj = cast(dict[str, object], parsed)
-
-    text_obj = data_obj.get("response")
-
-    if not isinstance(text_obj, str):
-        return None
-
-    text = text_obj.strip()
+    text = request_ollama_text(prompt)
 
     if not text:
         return None
 
     return sanitize_pr_body(text)
+
+
+def collect_commit_mode_inputs() -> CommitModeInputs | None:
+    """Collect and return shared commit-mode inputs."""
+    diff_kind, diff_text = get_diff()
+
+    if not diff_text:
+        return None
+
+    if diff_kind is None:
+        return None
+
+    changed_files = get_changed_files()
+    raw_diff = get_commit_raw_diff(diff_kind)
+    submodule_changes = get_submodule_changes_from_raw(raw_diff)
+    submodule_context = build_submodule_context(submodule_changes)
+
+    return CommitModeInputs(
+        diff_kind=diff_kind,
+        diff_text=diff_text,
+        changed_files=changed_files,
+        raw_diff=raw_diff,
+        submodule_changes=submodule_changes,
+        submodule_context=submodule_context,
+    )
+
+
+def handle_commit_mode(mode: Literal["commit", "commit_body"]) -> int:
+    """Handle commit subject/body generation modes."""
+    commit_inputs = collect_commit_mode_inputs()
+
+    if commit_inputs is None:
+        return 0
+
+    if mode == "commit" and is_submodule_only_change(commit_inputs.raw_diff):
+        fallback_subject = fallback_submodule_subject(commit_inputs.submodule_changes)
+
+        if fallback_subject:
+            print(fallback_subject)
+            return 0
+
+    ensure_ollama()
+
+    if mode == "commit_body":
+        commit_body = ask_ollama_commit_body(
+            commit_inputs.diff_kind,
+            commit_inputs.changed_files,
+            commit_inputs.diff_text,
+            commit_inputs.submodule_context,
+        )
+
+        if not commit_body:
+            return 0
+
+        print(commit_body)
+        return 0
+
+    message = ask_ollama(
+        commit_inputs.diff_kind,
+        commit_inputs.changed_files,
+        commit_inputs.diff_text,
+        commit_inputs.submodule_context,
+    )
+
+    if not message:
+        return 0
+
+    normalized_message = normalize_subject(message)
+    commit_paths = get_commit_changed_paths(commit_inputs.diff_kind)
+    commit_scope = derive_commit_scope(commit_paths)
+    scoped_message = enforce_scope_on_subject(normalized_message, commit_scope)
+
+    print(scoped_message)
+    return 0
+
+
+def collect_pr_mode_inputs(base_ref: str) -> PRModeInputs | None:
+    """Collect and return shared PR-mode inputs."""
+    pr_diff = get_pr_diff(base_ref)
+
+    if not pr_diff:
+        return None
+
+    changed_files = get_pr_changed_files(base_ref)
+    pr_raw_diff = get_pr_raw_diff(base_ref)
+    submodule_changes = get_submodule_changes_from_raw(pr_raw_diff)
+    submodule_context = build_submodule_context(submodule_changes)
+    pr_commits = get_pr_commits(base_ref)
+
+    return PRModeInputs(
+        pr_diff=pr_diff,
+        changed_files=changed_files,
+        pr_raw_diff=pr_raw_diff,
+        submodule_changes=submodule_changes,
+        submodule_context=submodule_context,
+        pr_commits=pr_commits,
+    )
+
+
+def handle_pr_title_mode(base_ref: str) -> int:
+    """Handle PR title generation mode."""
+    pr_inputs = collect_pr_mode_inputs(base_ref)
+
+    if pr_inputs is None:
+        return 0
+
+    if is_submodule_only_change(pr_inputs.pr_raw_diff):
+        fallback_title = fallback_submodule_subject(pr_inputs.submodule_changes)
+
+        if fallback_title:
+            print(fallback_title)
+            return 0
+
+    ensure_ollama()
+
+    title = ask_ollama_pr_title(
+        base_ref,
+        pr_inputs.changed_files,
+        pr_inputs.pr_diff,
+        pr_inputs.submodule_context,
+        pr_inputs.pr_commits,
+    )
+
+    if not title:
+        return 0
+
+    print(normalize_subject(title))
+    return 0
+
+
+def handle_pr_body_mode(base_ref: str) -> int:
+    """Handle PR body generation mode."""
+    pr_inputs = collect_pr_mode_inputs(base_ref)
+
+    if pr_inputs is None:
+        return 0
+
+    ensure_ollama()
+
+    body = ask_ollama_pr_body(
+        base_ref,
+        pr_inputs.changed_files,
+        pr_inputs.pr_diff,
+        pr_inputs.submodule_context,
+        pr_inputs.pr_commits,
+    )
+
+    if not body:
+        return 0
+
+    print(body)
+    return 0
 
 
 def main() -> int:
@@ -1372,114 +1567,18 @@ def main() -> int:
         # Quiet exit is best when this is triggered from Neovim.
         return 0
 
-    if mode in {"commit", "commit_body"}:
-        diff_kind, diff_text = get_diff()
+    if mode == "commit":
+        return handle_commit_mode("commit")
 
-        if not diff_text:
-            return 0
-
-        if diff_kind is None:
-            return 0
-
-        changed_files = get_changed_files()
-        raw_diff = get_commit_raw_diff(diff_kind)
-        submodule_changes = get_submodule_changes_from_raw(raw_diff)
-        submodule_context = build_submodule_context(submodule_changes)
-
-        if mode == "commit" and is_submodule_only_change(raw_diff):
-            fallback_subject = fallback_submodule_subject(submodule_changes)
-
-            if fallback_subject:
-                print(fallback_subject)
-                return 0
-
-        ensure_ollama()
-
-        if mode == "commit_body":
-            commit_body = ask_ollama_commit_body(
-                diff_kind,
-                changed_files,
-                diff_text,
-                submodule_context,
-            )
-
-            if not commit_body:
-                return 0
-
-            print(commit_body)
-
-            return 0
-
-        message = ask_ollama(
-            diff_kind,
-            changed_files,
-            diff_text,
-            submodule_context,
-        )
-
-        if not message:
-            return 0
-
-        normalized_message = normalize_subject(message)
-        commit_paths = get_commit_changed_paths(diff_kind)
-        commit_scope = derive_commit_scope(commit_paths)
-        scoped_message = enforce_scope_on_subject(normalized_message, commit_scope)
-
-        print(scoped_message)
-
-        return 0
+    if mode == "commit_body":
+        return handle_commit_mode("commit_body")
 
     base_ref = resolve_pr_base(cli_base_ref)
-    pr_diff = get_pr_diff(base_ref)
-
-    if not pr_diff:
-        return 0
-
-    changed_files = get_pr_changed_files(base_ref)
-    pr_raw_diff = get_pr_raw_diff(base_ref)
-    submodule_changes = get_submodule_changes_from_raw(pr_raw_diff)
-    submodule_context = build_submodule_context(submodule_changes)
-    pr_commits = get_pr_commits(base_ref)
-
-    if mode == "pr_title" and is_submodule_only_change(pr_raw_diff):
-        fallback_title = fallback_submodule_subject(submodule_changes)
-
-        if fallback_title:
-            print(fallback_title)
-            return 0
-
-    ensure_ollama()
 
     if mode == "pr_title":
-        title = ask_ollama_pr_title(
-            base_ref,
-            changed_files,
-            pr_diff,
-            submodule_context,
-            pr_commits,
-        )
+        return handle_pr_title_mode(base_ref)
 
-        if not title:
-            return 0
-
-        print(normalize_subject(title))
-
-        return 0
-
-    body = ask_ollama_pr_body(
-        base_ref,
-        changed_files,
-        pr_diff,
-        submodule_context,
-        pr_commits,
-    )
-
-    if not body:
-        return 0
-
-    print(body)
-
-    return 0
+    return handle_pr_body_mode(base_ref)
 
 
 if __name__ == "__main__":
