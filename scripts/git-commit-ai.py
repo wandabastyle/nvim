@@ -278,15 +278,15 @@ def clean_submodule_description(subject: str) -> str:
 
     lowered = text.lower()
 
-    blocked_terms = {
-        "submodule",
-        "merge",
-        "release",
-        "bump",
-        "chore",
-    }
+    blocked_patterns = [
+        r"^merge\b",
+        r"^release\b",
+        r"^chore\(release\)",
+        r"\bbump\s+version\b",
+        r"\bmerge\s+pull\s+request\b",
+    ]
 
-    if any(term in lowered for term in blocked_terms):
+    if any(re.search(pattern, lowered) for pattern in blocked_patterns):
         return ""
 
     if lowered in {
@@ -308,6 +308,47 @@ def clean_submodule_description(subject: str) -> str:
         text = text[0].lower() + text[1:]
 
     return text
+
+
+def score_submodule_description(text: str) -> int:
+    """Return a heuristic score for description quality."""
+    score = 0
+    words = text.split()
+    lowered = text.lower()
+
+    if 4 <= len(words) <= 12:
+        score += 2
+
+    if re.match(r"^(add|fix|refactor|improve|clean|optimize|simplify|handle)\b", lowered):
+        score += 2
+
+    if any(term in lowered for term in {"nvim", "config", "keymap", "lsp", "plugin"}):
+        score += 1
+
+    if any(term in lowered for term in {"update", "changes", "misc", "cleanup", "stuff"}):
+        score -= 1
+
+    return score
+
+
+def choose_submodule_description(commit_lines: Sequence[str]) -> str:
+    """Choose the most descriptive normalized subject from commit lines."""
+    best_description = ""
+    best_score = -10_000
+
+    for commit_line in commit_lines[:SUBMODULE_LOG_COUNT]:
+        description = clean_submodule_description(commit_line)
+
+        if not description:
+            continue
+
+        score = score_submodule_description(description)
+
+        if score > best_score:
+            best_score = score
+            best_description = description
+
+    return best_description
 
 
 def is_submodule_only_change(raw_diff: str) -> bool:
@@ -341,12 +382,12 @@ def fallback_submodule_subject(changes: Sequence[SubmoduleChange]) -> str | None
         commit_lines = get_submodule_log_lines(change)
 
         if commit_lines:
-            description = clean_submodule_description(commit_lines[0])
+            description = choose_submodule_description(commit_lines)
 
             if description:
                 return f"chore(submodule): {name}: {description} ({sha})"
 
-        return f"chore(submodule): update {name} ({sha})"
+        return f"chore(submodule): sync upstream changes in {name} ({sha})"
 
     return f"chore(submodules): update {len(sorted_changes)} submodules"
 
