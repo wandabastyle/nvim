@@ -21,6 +21,14 @@ DEFAULT_PR_BASE = "origin/main"
 HISTORY_CACHE_VERSION = 2
 HISTORY_SAMPLE_SIZE = 200
 HISTORY_TOKEN_LIMIT = 40
+CONVENTIONAL_TYPES = {
+    "fix",
+    "feat",
+    "chore",
+    "docs",
+    "refactor",
+    "test",
+}
 
 RAW_DIFF_LINE_RE = re.compile(
     r"^:(\d{6}) (\d{6}) ([0-9a-f]{7,40}) ([0-9a-f]{7,40}) ([A-Z]\d{0,3})\t(.+)$"
@@ -124,6 +132,75 @@ def get_changed_files() -> str:
         return ""
 
     return status
+
+
+def get_commit_changed_paths(diff_kind: Literal["staged", "working"]) -> list[str]:
+    """Return changed file paths for commit scope derivation."""
+    cmd = [
+        "git",
+        "diff",
+        "--name-only",
+    ]
+
+    if diff_kind == "staged":
+        cmd.append("--cached")
+
+    changed = run(cmd)
+
+    if not changed:
+        return []
+
+    paths: list[str] = []
+
+    for line in changed.splitlines():
+        path = line.strip()
+
+        if not path:
+            continue
+
+        if path.startswith("./"):
+            path = path[2:]
+
+        if path not in paths:
+            paths.append(path)
+
+    return paths
+
+
+def derive_commit_scope(changed_paths: Sequence[str]) -> str | None:
+    """Derive deterministic commit scope from changed paths."""
+    if not changed_paths:
+        return None
+
+    if len(changed_paths) == 1:
+        return changed_paths[0]
+
+    top_levels = {path.split("/", 1)[0] for path in changed_paths}
+
+    if len(top_levels) == 1:
+        return next(iter(top_levels))
+
+    return "config"
+
+
+def enforce_scope_on_subject(subject: str, scope: str | None) -> str:
+    """Rewrite a conventional subject to use a deterministic scope."""
+    if not scope:
+        return subject
+
+    match = re.match(r"^([a-z]+)(?:\([^\)]*\))?(!)?:\s*(.+)$", subject, flags=re.IGNORECASE)
+
+    if not match:
+        return subject
+
+    commit_type, breaking_marker, summary = match.groups()
+    normalized_type = commit_type.lower()
+
+    if normalized_type not in CONVENTIONAL_TYPES:
+        return subject
+
+    breaking = breaking_marker or ""
+    return f"{normalized_type}({scope}){breaking}: {summary.strip()}"
 
 
 def get_history_cache_path() -> str:
@@ -1242,7 +1319,12 @@ def main() -> int:
         if not message:
             return 0
 
-        print(normalize_subject(message))
+        normalized_message = normalize_subject(message)
+        commit_paths = get_commit_changed_paths(diff_kind)
+        commit_scope = derive_commit_scope(commit_paths)
+        scoped_message = enforce_scope_on_subject(normalized_message, commit_scope)
+
+        print(scoped_message)
 
         return 0
 
