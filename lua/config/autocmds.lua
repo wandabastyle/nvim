@@ -2,6 +2,18 @@ local ollama = require("config.ollama")
 
 local python_indent = vim.api.nvim_create_augroup("python_indent", { clear = true })
 local ollama_lifecycle = vim.api.nvim_create_augroup("ollama_lifecycle", { clear = true })
+local external_file_watch = vim.api.nvim_create_augroup("external_file_watch", { clear = true })
+
+local nvim_focused = true
+local checktime_timer = vim.uv.new_timer()
+
+local function safe_checktime()
+  if vim.fn.mode() == "c" then
+    return
+  end
+
+  pcall(vim.cmd, "silent! checktime")
+end
 
 vim.api.nvim_create_autocmd("FileType", {
   group = python_indent,
@@ -25,5 +37,57 @@ vim.api.nvim_create_autocmd("VimLeavePre", {
   group = ollama_lifecycle,
   callback = function()
     ollama.on_vim_leave_pre()
+  end,
+})
+
+vim.api.nvim_create_autocmd("FocusLost", {
+  group = external_file_watch,
+  callback = function()
+    nvim_focused = false
+  end,
+})
+
+vim.api.nvim_create_autocmd("FocusGained", {
+  group = external_file_watch,
+  callback = function()
+    nvim_focused = true
+    safe_checktime()
+  end,
+})
+
+vim.api.nvim_create_autocmd({ "BufEnter", "CursorHold", "CursorHoldI" }, {
+  group = external_file_watch,
+  callback = safe_checktime,
+})
+
+vim.api.nvim_create_autocmd("FileChangedShellPost", {
+  group = external_file_watch,
+  callback = function(args)
+    if nvim_focused then
+      return
+    end
+
+    local changed_file = args.file ~= "" and vim.fn.fnamemodify(args.file, ":~:.") or "current buffer"
+    vim.notify("Reloaded external changes: " .. changed_file, vim.log.levels.INFO)
+
+    local ok, gitsigns = pcall(require, "gitsigns")
+    if ok and type(gitsigns.next_hunk) == "function" then
+      pcall(gitsigns.next_hunk)
+    end
+  end,
+})
+
+if checktime_timer then
+  checktime_timer:start(500, 500, vim.schedule_wrap(safe_checktime))
+end
+
+vim.api.nvim_create_autocmd("VimLeavePre", {
+  group = external_file_watch,
+  callback = function()
+    if checktime_timer then
+      checktime_timer:stop()
+      checktime_timer:close()
+      checktime_timer = nil
+    end
   end,
 })
