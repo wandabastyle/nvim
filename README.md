@@ -32,7 +32,8 @@ LSP servers/tools used by this config:
 - `lua-language-server` (`lua_ls`)
 - `nil_ls` (`nil`)
 - `rust-analyzer`
-- `basedpyright` (`basedpyright`)
+- `ty` (`ty`)
+- `ruff` (`ruff`)
 - `typescript` + `typescript-language-server` (`ts_ls`)
 
 Optional but recommended:
@@ -43,7 +44,7 @@ Optional but recommended:
 Arch Linux / `yay` example (base tools + LSP tools):
 
 ```bash
-yay -S neovim-nightly-bin git ripgrep fd nodejs python stylua shellcheck shfmt clang lua-language-server nil rust-analyzer basedpyright typescript typescript-language-server lazygit ollama
+yay -S neovim-nightly-bin git ripgrep fd nodejs python stylua shellcheck shfmt clang lua-language-server nil rust-analyzer ty ruff typescript typescript-language-server lazygit ollama
 ```
 
 `neovim-nightly-bin` is used to avoid occasional `tree-sitter` ABI mismatches that can happen with source-built `neovim-git` after system library upgrades.
