@@ -278,13 +278,29 @@ def clean_submodule_description(subject: str) -> str:
 
     lowered = text.lower()
 
+    blocked_terms = {
+        "submodule",
+        "merge",
+        "release",
+        "bump",
+        "chore",
+    }
+
+    if any(term in lowered for term in blocked_terms):
+        return ""
+
     if lowered in {
         "update",
         "updates",
+        "updated",
         "bump",
         "bump deps",
         "latest",
         "sync",
+        "change",
+        "changes",
+        "fix",
+        "fixes",
     }:
         return ""
 
@@ -328,7 +344,7 @@ def fallback_submodule_subject(changes: Sequence[SubmoduleChange]) -> str | None
             description = clean_submodule_description(commit_lines[0])
 
             if description:
-                return f"chore(submodule): {description} ({sha})"
+                return f"chore(submodule): {name}: {description} ({sha})"
 
         return f"chore(submodule): update {name} ({sha})"
 
