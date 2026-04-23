@@ -6,23 +6,23 @@
       "version": "'v1'"
     },
     "conform.nvim": {
-      "rev": "086a40dc7ed8242c03be9f47fbcee68699cc2395",
+      "rev": "dca1a190aa85f9065979ef35802fb77131911106",
       "src": "https://github.com/stevearc/conform.nvim"
     },
     "gitsigns.nvim": {
-      "rev": "20ad4419564d6e22b189f6738116b38871082332",
+      "rev": "6d808f99bd63303646794406e270bd553ad7792e",
       "src": "https://github.com/lewis6991/gitsigns.nvim"
     },
     "lualine.nvim": {
-      "rev": "b8c23159c0161f4b89196f74ee3a6d02cdc3a955",
+      "rev": "a905eeebc4e63fdc48b5135d3bf8aea5618fb21c",
       "src": "https://github.com/nvim-lualine/lualine.nvim"
     },
     "mini.pairs": {
-      "rev": "b9aada8c0e59f2b938e98fbf4eae0799eba96ad9",
+      "rev": "42387c7fe68fc0b6e95eaf37f1bb76e7bffaa0d9",
       "src": "https://github.com/echasnovski/mini.pairs"
     },
     "mini.pick": {
-      "rev": "96ee37d07043aeed90ae6ae32733b2d0db8f1c13",
+      "rev": "437d44eb57312f23e6b931704694fc294922cd88",
       "src": "https://github.com/echasnovski/mini.pick"
     },
     "noice.nvim": {
@@ -42,7 +42,7 @@
       "src": "https://github.com/ethanholz/nvim-lastplace"
     },
     "nvim-lspconfig": {
-      "rev": "e688b486fe9291f151eae7e5c0b5a5c4ef980847",
+      "rev": "81878de76c0de4ce289513734ad80c31ec7871b8",
       "src": "https://github.com/neovim/nvim-lspconfig"
     },
     "nvim-notify": {
@@ -54,15 +54,15 @@
       "src": "https://github.com/nvim-treesitter/nvim-treesitter"
     },
     "nvim-web-devicons": {
-      "rev": "b8221e42cf7287c4dcde81f232f58d7b947c210d",
+      "rev": "c72328a5494b4502947a022fe69c0c47e53b6aa6",
       "src": "https://github.com/nvim-tree/nvim-web-devicons"
     },
     "oil.nvim": {
-      "rev": "919e155fdf38e9148cdb5304faaaf53c20d703ea",
+      "rev": "0fcc83805ad11cf714a949c98c605ed717e0b83e",
       "src": "https://github.com/stevearc/oil.nvim"
     },
     "tokyonight.nvim": {
-      "rev": "4d159616aee17796c2c94d2f5f87d2ee1a3f67c7",
+      "rev": "cdc07ac78467a233fd62c493de29a17e0cf2b2b6",
       "src": "https://github.com/folke/tokyonight.nvim"
     },
     "vim-python-pep8-indent": {
