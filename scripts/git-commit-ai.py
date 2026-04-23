@@ -232,13 +232,25 @@ def ask_ollama(
     prompt = f"""You write excellent git commit messages.
 
 Task:
-Generate exactly one git commit message for this {diff_kind} diff.
+Generate exactly one git commit subject for this {diff_kind} diff.
 
-Rules:
-- Output only the commit message
+## Commits
+- Use conventional-style commit subjects:
+  - fix(...)
+  - feat(...)
+  - chore(...)
+  - docs(...)
+  - refactor(...)
+  - test(...)
+- Use format: type(scope): subject
+  - scope is optional, so type: subject is valid
+- Keep commits scoped: do not mix unrelated changes in the message
+- Never include secrets in the message (tokens, credentials, .env values)
+
+Output rules:
+- Output only the commit subject
 - No quotes
 - One line only
-- Use conventional commits
 - Keep it under 72 characters if possible
 - Be specific, not generic
 
