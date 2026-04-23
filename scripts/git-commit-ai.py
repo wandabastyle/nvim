@@ -30,6 +30,132 @@ CONVENTIONAL_TYPES = {
     "test",
 }
 
+COMMIT_SUBJECT_PROMPT_TEMPLATE = """You write excellent git commit messages.
+
+Task:
+Generate exactly one git commit subject for this {diff_kind} diff.
+
+## Commits
+- Use conventional-style commit subjects:
+  - fix(...)
+  - feat(...)
+  - chore(...)
+  - docs(...)
+  - refactor(...)
+  - test(...)
+- Use format: type(scope): subject
+  - scope is optional, so type: subject is valid
+- Keep commits scoped: do not mix unrelated changes in the message
+- Never include secrets in the message (tokens, credentials, .env values)
+
+Output rules:
+- Output only the commit subject
+- No quotes
+- One line only
+- Keep it under 72 characters if possible
+- Be specific, not generic
+- Avoid vague phrases like "latest commit" or "latest commits"
+
+Changed files:
+{changed_files}
+
+Submodule changes:
+{submodule_context}
+
+Diff:
+{trimmed_diff}
+"""
+
+COMMIT_BODY_PROMPT_TEMPLATE = """You write concise git commit message bodies.
+
+Task:
+Generate a commit body for this {diff_kind} diff.
+
+Rules:
+- Output only markdown bullet points
+- No heading, no intro sentence, no conclusion
+- No code fences
+- 3 to 5 bullets
+- Each bullet is one line
+- Focus on key implementation details and user-visible impact
+- Mention tests/validation only if clearly present in diff
+- Do not invent changes not shown in diff
+- Avoid vague phrases like "latest commit" or "latest commits"
+
+Changed files:
+{changed_files}
+
+Submodule changes:
+{submodule_context}
+
+Diff:
+{trimmed_diff}
+"""
+
+PR_TITLE_PROMPT_TEMPLATE = """You write excellent GitHub pull request titles.
+
+Task:
+Generate exactly one PR title for this diff range {base_ref}...HEAD.
+
+Rules:
+- Output only the title
+- One line only
+- No quotes
+- Max 72 characters
+- Use conventional-style format:
+  - fix(...)
+  - feat(...)
+  - chore(...)
+  - docs(...)
+  - refactor(...)
+  - test(...)
+- Use format: type(scope): summary
+  - scope is optional, so type: summary is valid
+- Be specific to the actual change
+- Avoid vague phrases like "latest commit" or "latest commits"
+
+Changed files:
+{changed_files}
+
+Commits in range:
+{pr_commits}
+
+Submodule changes:
+{submodule_context}
+
+Diff:
+{trimmed_diff}
+"""
+
+PR_BODY_PROMPT_TEMPLATE = """You write concise GitHub pull request descriptions.
+
+Task:
+Generate a PR body for this diff range {base_ref}...HEAD.
+
+Rules:
+- Output only markdown bullet points
+- No heading, no intro sentence, no conclusion
+- No code fences
+- 3 to 6 bullets
+- Each bullet is one line
+- Focus on user-visible impact and key implementation details
+- Mention tests/validation only if clearly present in diff
+- Do not invent changes not shown in diff
+- Avoid vague phrases like "latest commit" or "latest commits"
+
+Changed files:
+{changed_files}
+
+Commits in range:
+{pr_commits}
+
+Submodule changes:
+{submodule_context}
+
+Diff:
+{trimmed_diff}
+"""
+
 RAW_DIFF_LINE_RE = re.compile(
     r"^:(\d{6}) (\d{6}) ([0-9a-f]{7,40}) ([0-9a-f]{7,40}) ([A-Z]\d{0,3})\t(.+)$"
 )
@@ -1133,6 +1259,75 @@ def request_ollama_text(prompt: str, timeout: float = 80) -> str | None:
     return text
 
 
+def prompt_value(text: str) -> str:
+    """Return prompt-safe value with a default placeholder."""
+    return text or "(none)"
+
+
+def render_commit_subject_prompt(
+    diff_kind: Literal["staged", "working"],
+    changed_files: str,
+    trimmed_diff: str,
+    submodule_context: str,
+) -> str:
+    """Render commit subject prompt text."""
+    return COMMIT_SUBJECT_PROMPT_TEMPLATE.format(
+        diff_kind=diff_kind,
+        changed_files=prompt_value(changed_files),
+        submodule_context=prompt_value(submodule_context),
+        trimmed_diff=trimmed_diff,
+    )
+
+
+def render_commit_body_prompt(
+    diff_kind: Literal["staged", "working"],
+    changed_files: str,
+    trimmed_diff: str,
+    submodule_context: str,
+) -> str:
+    """Render commit body prompt text."""
+    return COMMIT_BODY_PROMPT_TEMPLATE.format(
+        diff_kind=diff_kind,
+        changed_files=prompt_value(changed_files),
+        submodule_context=prompt_value(submodule_context),
+        trimmed_diff=trimmed_diff,
+    )
+
+
+def render_pr_title_prompt(
+    base_ref: str,
+    changed_files: str,
+    pr_commits: str,
+    trimmed_diff: str,
+    submodule_context: str,
+) -> str:
+    """Render PR title prompt text."""
+    return PR_TITLE_PROMPT_TEMPLATE.format(
+        base_ref=base_ref,
+        changed_files=prompt_value(changed_files),
+        pr_commits=prompt_value(pr_commits),
+        submodule_context=prompt_value(submodule_context),
+        trimmed_diff=trimmed_diff,
+    )
+
+
+def render_pr_body_prompt(
+    base_ref: str,
+    changed_files: str,
+    pr_commits: str,
+    trimmed_diff: str,
+    submodule_context: str,
+) -> str:
+    """Render PR body prompt text."""
+    return PR_BODY_PROMPT_TEMPLATE.format(
+        base_ref=base_ref,
+        changed_files=prompt_value(changed_files),
+        pr_commits=prompt_value(pr_commits),
+        submodule_context=prompt_value(submodule_context),
+        trimmed_diff=trimmed_diff,
+    )
+
+
 def ask_ollama(
     diff_kind: Literal["staged", "working"],
     changed_files: str,
@@ -1146,42 +1341,12 @@ def ask_ollama(
     not an explanation or a full commit body.
     """
     trimmed_diff = diff_text[:MAX_DIFF_CHARS]
-
-    prompt = f"""You write excellent git commit messages.
-
-Task:
-Generate exactly one git commit subject for this {diff_kind} diff.
-
-## Commits
-- Use conventional-style commit subjects:
-  - fix(...)
-  - feat(...)
-  - chore(...)
-  - docs(...)
-  - refactor(...)
-  - test(...)
-- Use format: type(scope): subject
-  - scope is optional, so type: subject is valid
-- Keep commits scoped: do not mix unrelated changes in the message
-- Never include secrets in the message (tokens, credentials, .env values)
-
-Output rules:
-- Output only the commit subject
-- No quotes
-- One line only
-- Keep it under 72 characters if possible
-- Be specific, not generic
-- Avoid vague phrases like "latest commit" or "latest commits"
-
-Changed files:
-{changed_files or "(none)"}
-
-Submodule changes:
-{submodule_context or "(none)"}
-
-Diff:
-{trimmed_diff}
-"""
+    prompt = render_commit_subject_prompt(
+        diff_kind,
+        changed_files,
+        trimmed_diff,
+        submodule_context,
+    )
 
     text = request_ollama_text(prompt)
 
@@ -1214,32 +1379,12 @@ def ask_ollama_commit_body(
 ) -> str | None:
     """Ask Ollama for a concise bullet-only commit body."""
     trimmed_diff = diff_text[:MAX_DIFF_CHARS]
-
-    prompt = f"""You write concise git commit message bodies.
-
-Task:
-Generate a commit body for this {diff_kind} diff.
-
-Rules:
-- Output only markdown bullet points
-- No heading, no intro sentence, no conclusion
-- No code fences
-- 3 to 5 bullets
-- Each bullet is one line
-- Focus on key implementation details and user-visible impact
-- Mention tests/validation only if clearly present in diff
-- Do not invent changes not shown in diff
-- Avoid vague phrases like "latest commit" or "latest commits"
-
-Changed files:
-{changed_files or "(none)"}
-
-Submodule changes:
-{submodule_context or "(none)"}
-
-Diff:
-{trimmed_diff}
-"""
+    prompt = render_commit_body_prompt(
+        diff_kind,
+        changed_files,
+        trimmed_diff,
+        submodule_context,
+    )
 
     text = request_ollama_text(prompt)
 
@@ -1258,41 +1403,13 @@ def ask_ollama_pr_title(
 ) -> str | None:
     """Ask Ollama for a single PR title."""
     trimmed_diff = diff_text[:MAX_DIFF_CHARS]
-
-    prompt = f"""You write excellent GitHub pull request titles.
-
-Task:
-Generate exactly one PR title for this diff range {base_ref}...HEAD.
-
-Rules:
-- Output only the title
-- One line only
-- No quotes
-- Max 72 characters
-- Use conventional-style format:
-  - fix(...)
-  - feat(...)
-  - chore(...)
-  - docs(...)
-  - refactor(...)
-  - test(...)
-- Use format: type(scope): summary
-  - scope is optional, so type: summary is valid
-- Be specific to the actual change
-- Avoid vague phrases like "latest commit" or "latest commits"
-
-Changed files:
-{changed_files or "(none)"}
-
-Commits in range:
-{pr_commits or "(none)"}
-
-Submodule changes:
-{submodule_context or "(none)"}
-
-Diff:
-{trimmed_diff}
-"""
+    prompt = render_pr_title_prompt(
+        base_ref,
+        changed_files,
+        pr_commits,
+        trimmed_diff,
+        submodule_context,
+    )
 
     text = request_ollama_text(prompt)
 
@@ -1358,35 +1475,13 @@ def ask_ollama_pr_body(
 ) -> str | None:
     """Ask Ollama for a concise bullet-only PR body."""
     trimmed_diff = diff_text[:MAX_DIFF_CHARS]
-
-    prompt = f"""You write concise GitHub pull request descriptions.
-
-Task:
-Generate a PR body for this diff range {base_ref}...HEAD.
-
-Rules:
-- Output only markdown bullet points
-- No heading, no intro sentence, no conclusion
-- No code fences
-- 3 to 6 bullets
-- Each bullet is one line
-- Focus on user-visible impact and key implementation details
-- Mention tests/validation only if clearly present in diff
-- Do not invent changes not shown in diff
-- Avoid vague phrases like "latest commit" or "latest commits"
-
-Changed files:
-{changed_files or "(none)"}
-
-Commits in range:
-{pr_commits or "(none)"}
-
-Submodule changes:
-{submodule_context or "(none)"}
-
-Diff:
-{trimmed_diff}
-"""
+    prompt = render_pr_body_prompt(
+        base_ref,
+        changed_files,
+        pr_commits,
+        trimmed_diff,
+        submodule_context,
+    )
 
     text = request_ollama_text(prompt)
 
