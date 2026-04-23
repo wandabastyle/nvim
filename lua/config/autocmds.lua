@@ -6,13 +6,19 @@ local external_file_watch = vim.api.nvim_create_augroup("external_file_watch", {
 
 local nvim_focused = true
 local checktime_timer = vim.uv.new_timer()
+local last_shellpost_ms = 0
+local shellpost_debounce_ms = 200
 
-local function safe_checktime()
+local function safe_checktime_current_buffer()
   if vim.fn.mode() == "c" then
     return
   end
 
-  pcall(vim.cmd, "silent! checktime")
+  if vim.bo.buftype ~= "" then
+    return
+  end
+
+  pcall(vim.cmd, "silent! checktime %")
 end
 
 vim.api.nvim_create_autocmd("FileType", {
@@ -51,13 +57,8 @@ vim.api.nvim_create_autocmd("FocusGained", {
   group = external_file_watch,
   callback = function()
     nvim_focused = true
-    safe_checktime()
+    safe_checktime_current_buffer()
   end,
-})
-
-vim.api.nvim_create_autocmd({ "BufEnter", "CursorHold", "CursorHoldI" }, {
-  group = external_file_watch,
-  callback = safe_checktime,
 })
 
 vim.api.nvim_create_autocmd("FileChangedShellPost", {
@@ -67,18 +68,36 @@ vim.api.nvim_create_autocmd("FileChangedShellPost", {
       return
     end
 
+    local now = vim.uv.now()
+    if now - last_shellpost_ms < shellpost_debounce_ms then
+      return
+    end
+    last_shellpost_ms = now
+
     local changed_file = args.file ~= "" and vim.fn.fnamemodify(args.file, ":~:.") or "current buffer"
     vim.notify("Reloaded external changes: " .. changed_file, vim.log.levels.INFO)
 
-    local ok, gitsigns = pcall(require, "gitsigns")
-    if ok and type(gitsigns.next_hunk) == "function" then
-      pcall(gitsigns.next_hunk)
-    end
+    vim.defer_fn(function()
+      pcall(vim.cmd, "silent! Gitsigns refresh")
+      pcall(vim.cmd, "silent! redrawstatus")
+
+      local ok, gitsigns = pcall(require, "gitsigns")
+      if ok and type(gitsigns.next_hunk) == "function" then
+        vim.defer_fn(function()
+          pcall(gitsigns.next_hunk)
+          pcall(vim.cmd, "silent! redrawstatus")
+        end, 120)
+      end
+    end, 120)
   end,
 })
 
 if checktime_timer then
-  checktime_timer:start(500, 500, vim.schedule_wrap(safe_checktime))
+  checktime_timer:start(500, 500, vim.schedule_wrap(function()
+    if not nvim_focused then
+      safe_checktime_current_buffer()
+    end
+  end))
 end
 
 vim.api.nvim_create_autocmd("VimLeavePre", {
