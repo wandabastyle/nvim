@@ -842,9 +842,11 @@ def get_pr_commits(base_ref: str) -> str:
     return commits
 
 
-def parse_args(argv: Sequence[str]) -> tuple[Literal["commit", "pr_title", "pr_body"], str | None] | None:
+def parse_args(
+    argv: Sequence[str],
+) -> tuple[Literal["commit", "commit_body", "pr_title", "pr_body"], str | None] | None:
     """Parse CLI flags and return (mode, base_ref)."""
-    mode: Literal["commit", "pr_title", "pr_body"] = "commit"
+    mode: Literal["commit", "commit_body", "pr_title", "pr_body"] = "commit"
     base_ref: str | None = None
     index = 0
 
@@ -864,6 +866,14 @@ def parse_args(argv: Sequence[str]) -> tuple[Literal["commit", "pr_title", "pr_b
                 return None
 
             mode = "pr_body"
+            index += 1
+            continue
+
+        if arg == "--commit-body":
+            if mode != "commit":
+                return None
+
+            mode = "commit_body"
             index += 1
             continue
 
@@ -1067,6 +1077,77 @@ def normalize_subject(text: str) -> str:
     return normalized
 
 
+def ask_ollama_commit_body(
+    diff_kind: Literal["staged", "working"],
+    changed_files: str,
+    diff_text: str,
+    submodule_context: str,
+) -> str | None:
+    """Ask Ollama for a concise bullet-only commit body."""
+    trimmed_diff = diff_text[:MAX_DIFF_CHARS]
+
+    prompt = f"""You write concise git commit message bodies.
+
+Task:
+Generate a commit body for this {diff_kind} diff.
+
+Rules:
+- Output only markdown bullet points
+- No heading, no intro sentence, no conclusion
+- No code fences
+- 3 to 5 bullets
+- Each bullet is one line
+- Focus on key implementation details and user-visible impact
+- Mention tests/validation only if clearly present in diff
+- Do not invent changes not shown in diff
+- Avoid vague phrases like "latest commit" or "latest commits"
+
+Changed files:
+{changed_files or "(none)"}
+
+Submodule changes:
+{submodule_context or "(none)"}
+
+Diff:
+{trimmed_diff}
+"""
+
+    payload: dict[str, object] = {
+        "model": MODEL,
+        "prompt": prompt,
+        "stream": False,
+        "keep_alive": "10m",
+    }
+
+    request = urllib.request.Request(
+        OLLAMA_URL,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+
+    with cast(HTTPResponse, urllib.request.urlopen(request, timeout=80)) as response:
+        body = response.read().decode("utf-8")
+
+    parsed = cast(object, json.loads(body))
+
+    if not isinstance(parsed, dict):
+        return None
+
+    data_obj = cast(dict[str, object], parsed)
+    text_obj = data_obj.get("response")
+
+    if not isinstance(text_obj, str):
+        return None
+
+    text = text_obj.strip()
+
+    if not text:
+        return None
+
+    return sanitize_bullet_body(text)
+
+
 def ask_ollama_pr_title(
     base_ref: str,
     changed_files: str,
@@ -1155,7 +1236,7 @@ Diff:
     return first_line
 
 
-def sanitize_pr_body(text: str) -> str | None:
+def sanitize_bullet_body(text: str) -> str | None:
     """Return bullet-only markdown body without fenced code blocks."""
     lines = text.splitlines()
     bullets: list[str] = []
@@ -1189,6 +1270,11 @@ def sanitize_pr_body(text: str) -> str | None:
         return None
 
     return "\n".join(bullets)
+
+
+def sanitize_pr_body(text: str) -> str | None:
+    """Return a sanitized PR body in bullet-only markdown."""
+    return sanitize_bullet_body(text)
 
 
 def ask_ollama_pr_body(
@@ -1286,7 +1372,7 @@ def main() -> int:
         # Quiet exit is best when this is triggered from Neovim.
         return 0
 
-    if mode == "commit":
+    if mode in {"commit", "commit_body"}:
         diff_kind, diff_text = get_diff()
 
         if not diff_text:
@@ -1300,7 +1386,7 @@ def main() -> int:
         submodule_changes = get_submodule_changes_from_raw(raw_diff)
         submodule_context = build_submodule_context(submodule_changes)
 
-        if is_submodule_only_change(raw_diff):
+        if mode == "commit" and is_submodule_only_change(raw_diff):
             fallback_subject = fallback_submodule_subject(submodule_changes)
 
             if fallback_subject:
@@ -1308,6 +1394,21 @@ def main() -> int:
                 return 0
 
         ensure_ollama()
+
+        if mode == "commit_body":
+            commit_body = ask_ollama_commit_body(
+                diff_kind,
+                changed_files,
+                diff_text,
+                submodule_context,
+            )
+
+            if not commit_body:
+                return 0
+
+            print(commit_body)
+
+            return 0
 
         message = ask_ollama(
             diff_kind,
