@@ -2,11 +2,13 @@
 
 import json
 import os
+import re
 import subprocess
 import sys
 import time
 import urllib.request
 from collections.abc import Sequence
+from dataclasses import dataclass
 from http.client import HTTPResponse
 from typing import Literal, cast
 
@@ -16,6 +18,28 @@ MODEL = "qwen2.5-coder:7b"
 MAX_DIFF_CHARS = 12000
 SUBMODULE_LOG_COUNT = 5
 DEFAULT_PR_BASE = "origin/main"
+
+RAW_DIFF_LINE_RE = re.compile(
+    r"^:(\d{6}) (\d{6}) ([0-9a-f]{7,40}) ([0-9a-f]{7,40}) ([A-Z]\d{0,3})\t(.+)$"
+)
+
+
+@dataclass(frozen=True)
+class RawDiffEntry:
+    old_mode: str
+    new_mode: str
+    old_sha: str
+    new_sha: str
+    status: str
+    path: str
+
+
+@dataclass(frozen=True)
+class SubmoduleChange:
+    path: str
+    old_sha: str
+    new_sha: str
+    status: Literal["updated", "added", "removed"]
 
 
 def run(cmd: Sequence[str]) -> str | None:
@@ -95,59 +119,172 @@ def get_changed_files() -> str:
     return status
 
 
-def get_submodule_logs() -> str:
-    """
-    Return short commit logs for changed submodules.
+def parse_raw_diff_entries(raw_diff: str) -> list[RawDiffEntry]:
+    """Parse `git diff --raw` output into structured entries."""
+    entries: list[RawDiffEntry] = []
 
-    The main repo diff only shows submodule pointer changes. These short
-    logs give the model actual context from inside the submodule repos.
-    """
-    status = run([
-        "git",
-        "submodule",
-        "status",
-    ])
+    for line in raw_diff.splitlines():
+        match = RAW_DIFF_LINE_RE.match(line.strip())
 
-    if not status:
-        return ""
-
-    logs: list[str] = []
-
-    for line in status.splitlines():
-        line = line.strip()
-
-        # Changed submodules are marked with '+' or '-'.
-        if not line or line[0] not in "+-":
+        if not match:
             continue
 
-        parts = line.split()
+        old_mode, new_mode, old_sha, new_sha, status_token, path_part = match.groups()
+        status = status_token[0]
 
-        if len(parts) < 2:
-            continue
+        if status in {"R", "C"} and "\t" in path_part:
+            _, new_path = path_part.split("\t", 1)
+            path = new_path
+        else:
+            path = path_part
 
-        path = parts[1]
-
-        log = run([
-            "git",
-            "-C",
-            path,
-            "log",
-            "--oneline",
-            "-n",
-            str(SUBMODULE_LOG_COUNT),
-        ])
-
-        if not log:
-            continue
-
-        logs.append(
-            f"{path}:\n{log}"
+        entries.append(
+            RawDiffEntry(
+                old_mode=old_mode,
+                new_mode=new_mode,
+                old_sha=old_sha,
+                new_sha=new_sha,
+                status=status,
+                path=path,
+            )
         )
 
-    if not logs:
+    return entries
+
+
+def is_zero_sha(sha: str) -> bool:
+    """Return True when SHA is all zeroes."""
+    return bool(sha) and set(sha) == {"0"}
+
+
+def is_submodule_entry(entry: RawDiffEntry) -> bool:
+    """Return True if the raw diff entry refers to a submodule."""
+    return entry.old_mode == "160000" or entry.new_mode == "160000"
+
+
+def get_submodule_changes_from_raw(raw_diff: str) -> list[SubmoduleChange]:
+    """Extract changed submodule pointers from raw diff output."""
+    by_path: dict[str, SubmoduleChange] = {}
+
+    for entry in parse_raw_diff_entries(raw_diff):
+        if not is_submodule_entry(entry):
+            continue
+
+        if is_zero_sha(entry.old_sha):
+            status: Literal["updated", "added", "removed"] = "added"
+        elif is_zero_sha(entry.new_sha):
+            status = "removed"
+        else:
+            status = "updated"
+
+        by_path[entry.path] = SubmoduleChange(
+            path=entry.path,
+            old_sha=entry.old_sha,
+            new_sha=entry.new_sha,
+            status=status,
+        )
+
+    return [by_path[path] for path in sorted(by_path)]
+
+
+def get_submodule_log_lines(change: SubmoduleChange) -> list[str]:
+    """Return up to SUBMODULE_LOG_COUNT commit subjects for a submodule change."""
+    if change.status != "updated":
+        return []
+
+    forward_log = run([
+        "git",
+        "-C",
+        change.path,
+        "log",
+        "--oneline",
+        "-n",
+        str(SUBMODULE_LOG_COUNT),
+        f"{change.old_sha}..{change.new_sha}",
+    ])
+
+    if forward_log:
+        return forward_log.splitlines()
+
+    reverse_log = run([
+        "git",
+        "-C",
+        change.path,
+        "log",
+        "--oneline",
+        "-n",
+        str(SUBMODULE_LOG_COUNT),
+        f"{change.new_sha}..{change.old_sha}",
+    ])
+
+    if reverse_log:
+        return reverse_log.splitlines()
+
+    return []
+
+
+def short_sha(sha: str) -> str:
+    """Return a short SHA representation."""
+    if is_zero_sha(sha):
+        return "0000000"
+
+    return sha[:10]
+
+
+def build_submodule_context(changes: Sequence[SubmoduleChange]) -> str:
+    """Build deterministic submodule context for the model prompt."""
+    if not changes:
         return ""
 
-    return "\n\n".join(logs)
+    sections: list[str] = []
+
+    for change in sorted(changes, key=lambda item: item.path):
+        header = (
+            f"- {change.path} [{change.status}] "
+            f"{short_sha(change.old_sha)} -> {short_sha(change.new_sha)}"
+        )
+        lines = [header]
+        commits = get_submodule_log_lines(change)
+
+        if commits:
+            for commit in commits:
+                lines.append(f"  - {commit}")
+
+        sections.append("\n".join(lines))
+
+    return "\n\n".join(sections)
+
+
+def is_submodule_only_change(raw_diff: str) -> bool:
+    """Return True if raw diff contains only submodule entries."""
+    entries = parse_raw_diff_entries(raw_diff)
+
+    if not entries:
+        return False
+
+    return all(is_submodule_entry(entry) for entry in entries)
+
+
+def fallback_submodule_subject(changes: Sequence[SubmoduleChange]) -> str | None:
+    """Return a deterministic commit/PR subject for submodule-only changes."""
+    sorted_changes = sorted(changes, key=lambda item: item.path)
+
+    if not sorted_changes:
+        return None
+
+    if len(sorted_changes) == 1:
+        change = sorted_changes[0]
+        name = os.path.basename(change.path.rstrip("/")) or change.path
+
+        if change.status == "added":
+            return f"chore(submodule): add {name} at {short_sha(change.new_sha)}"
+
+        if change.status == "removed":
+            return f"chore(submodule): remove {name}"
+
+        return f"chore(submodule): bump {name} to {short_sha(change.new_sha)}"
+
+    return f"chore(submodules): update {len(sorted_changes)} submodules"
 
 
 def get_pr_diff(base_ref: str) -> str | None:
@@ -164,6 +301,40 @@ def get_pr_diff(base_ref: str) -> str | None:
         return None
 
     return pr_diff
+
+
+def get_commit_raw_diff(diff_kind: Literal["staged", "working"]) -> str:
+    """Return raw diff for commit mode."""
+    cmd = [
+        "git",
+        "diff",
+        "--raw",
+    ]
+
+    if diff_kind == "staged":
+        cmd.append("--cached")
+
+    raw_diff = run(cmd)
+
+    if not raw_diff:
+        return ""
+
+    return raw_diff
+
+
+def get_pr_raw_diff(base_ref: str) -> str:
+    """Return raw diff for PR mode."""
+    raw_diff = run([
+        "git",
+        "diff",
+        "--raw",
+        f"{base_ref}...HEAD",
+    ])
+
+    if not raw_diff:
+        return ""
+
+    return raw_diff
 
 
 def get_pr_changed_files(base_ref: str) -> str:
@@ -323,7 +494,7 @@ def ask_ollama(
     diff_kind: Literal["staged", "working"],
     changed_files: str,
     diff_text: str,
-    submodule_logs: str,
+    submodule_context: str,
 ) -> str | None:
     """
     Ask Ollama for a single commit message suggestion.
@@ -357,12 +528,13 @@ Output rules:
 - One line only
 - Keep it under 72 characters if possible
 - Be specific, not generic
+- Avoid vague phrases like "latest commit" or "latest commits"
 
 Changed files:
 {changed_files or "(none)"}
 
 Submodule changes:
-{submodule_logs or "(none)"}
+{submodule_context or "(none)"}
 
 Diff:
 {trimmed_diff}
@@ -408,11 +580,23 @@ Diff:
     return first_line
 
 
+def normalize_subject(text: str) -> str:
+    """Normalize generated subject line formatting."""
+    normalized = text.strip().strip("`").strip().strip('"').strip("'")
+
+    normalized = re.sub(r"\s+", " ", normalized)
+    normalized = normalized.replace("latest commit(s)", "submodule pointers")
+    normalized = normalized.replace("latest commits", "submodule pointers")
+    normalized = normalized.replace("latest commit", "submodule pointer")
+
+    return normalized
+
+
 def ask_ollama_pr_title(
     base_ref: str,
     changed_files: str,
     diff_text: str,
-    submodule_logs: str,
+    submodule_context: str,
     pr_commits: str,
 ) -> str | None:
     """Ask Ollama for a single PR title."""
@@ -438,6 +622,7 @@ Rules:
 - Use format: type(scope): summary
   - scope is optional, so type: summary is valid
 - Be specific to the actual change
+- Avoid vague phrases like "latest commit" or "latest commits"
 
 Changed files:
 {changed_files or "(none)"}
@@ -446,7 +631,7 @@ Commits in range:
 {pr_commits or "(none)"}
 
 Submodule changes:
-{submodule_logs or "(none)"}
+{submodule_context or "(none)"}
 
 Diff:
 {trimmed_diff}
@@ -535,7 +720,7 @@ def ask_ollama_pr_body(
     base_ref: str,
     changed_files: str,
     diff_text: str,
-    submodule_logs: str,
+    submodule_context: str,
     pr_commits: str,
 ) -> str | None:
     """Ask Ollama for a concise bullet-only PR body."""
@@ -555,6 +740,7 @@ Rules:
 - Focus on user-visible impact and key implementation details
 - Mention tests/validation only if clearly present in diff
 - Do not invent changes not shown in diff
+- Avoid vague phrases like "latest commit" or "latest commits"
 
 Changed files:
 {changed_files or "(none)"}
@@ -563,7 +749,7 @@ Commits in range:
 {pr_commits or "(none)"}
 
 Submodule changes:
-{submodule_logs or "(none)"}
+{submodule_context or "(none)"}
 
 Diff:
 {trimmed_diff}
@@ -635,7 +821,16 @@ def main() -> int:
             return 0
 
         changed_files = get_changed_files()
-        submodule_logs = get_submodule_logs()
+        raw_diff = get_commit_raw_diff(diff_kind)
+        submodule_changes = get_submodule_changes_from_raw(raw_diff)
+        submodule_context = build_submodule_context(submodule_changes)
+
+        if is_submodule_only_change(raw_diff):
+            fallback_subject = fallback_submodule_subject(submodule_changes)
+
+            if fallback_subject:
+                print(fallback_subject)
+                return 0
 
         ensure_ollama()
 
@@ -643,13 +838,13 @@ def main() -> int:
             diff_kind,
             changed_files,
             diff_text,
-            submodule_logs,
+            submodule_context,
         )
 
         if not message:
             return 0
 
-        print(message)
+        print(normalize_subject(message))
 
         return 0
 
@@ -660,8 +855,17 @@ def main() -> int:
         return 0
 
     changed_files = get_pr_changed_files(base_ref)
-    submodule_logs = get_submodule_logs()
+    pr_raw_diff = get_pr_raw_diff(base_ref)
+    submodule_changes = get_submodule_changes_from_raw(pr_raw_diff)
+    submodule_context = build_submodule_context(submodule_changes)
     pr_commits = get_pr_commits(base_ref)
+
+    if mode == "pr_title" and is_submodule_only_change(pr_raw_diff):
+        fallback_title = fallback_submodule_subject(submodule_changes)
+
+        if fallback_title:
+            print(fallback_title)
+            return 0
 
     ensure_ollama()
 
@@ -670,14 +874,14 @@ def main() -> int:
             base_ref,
             changed_files,
             pr_diff,
-            submodule_logs,
+            submodule_context,
             pr_commits,
         )
 
         if not title:
             return 0
 
-        print(title)
+        print(normalize_subject(title))
 
         return 0
 
@@ -685,7 +889,7 @@ def main() -> int:
         base_ref,
         changed_files,
         pr_diff,
-        submodule_logs,
+        submodule_context,
         pr_commits,
     )
 
