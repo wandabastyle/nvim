@@ -195,7 +195,7 @@ class HistoryCacheFile(TypedDict):
     repos: dict[str, dict[str, PathHistoryEntry]]
 
 
-_history_cache_loaded = False
+_history_cache_loaded: bool = False
 _history_cache_data: HistoryCacheFile = {
     "version": HISTORY_CACHE_VERSION,
     "repos": {},

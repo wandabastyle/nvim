@@ -15,6 +15,7 @@ vim.api.nvim_create_user_command("ConfigHealth", function()
 		"python3",
 		"stylua",
 		"ruff",
+		"ty",
 		"rustfmt",
 		"nixfmt",
 		"prettier",

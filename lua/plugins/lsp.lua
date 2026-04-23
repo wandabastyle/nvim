@@ -2,6 +2,16 @@ local capabilities = require("blink.cmp").get_lsp_capabilities()
 
 vim.lsp.config["lua_ls"] = {
 	capabilities = capabilities,
+	settings = {
+		Lua = {
+			runtime = { version = "LuaJIT" },
+			workspace = {
+				checkThirdParty = false,
+				library = vim.api.nvim_get_runtime_file("", true),
+			},
+			telemetry = { enable = false },
+		},
+	},
 }
 
 vim.lsp.config["nil_ls"] = {
@@ -12,7 +22,11 @@ vim.lsp.config["rust_analyzer"] = {
 	capabilities = capabilities,
 }
 
-vim.lsp.config["basedpyright"] = {
+vim.lsp.config["ty"] = {
+	capabilities = capabilities,
+}
+
+vim.lsp.config["ruff"] = {
 	capabilities = capabilities,
 }
 
@@ -20,7 +34,7 @@ vim.lsp.config["ts_ls"] = {
 	capabilities = capabilities,
 }
 
-vim.lsp.enable({ "lua_ls", "nil_ls", "rust_analyzer", "basedpyright", "ts_ls" })
+vim.lsp.enable({ "lua_ls", "nil_ls", "rust_analyzer", "ty", "ruff", "ts_ls" })
 
 vim.api.nvim_create_autocmd("LspAttach", {
 	callback = function(ev)
