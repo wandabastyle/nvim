@@ -255,6 +255,45 @@ def build_submodule_context(changes: Sequence[SubmoduleChange]) -> str:
     return "\n\n".join(sections)
 
 
+def clean_submodule_description(subject: str) -> str:
+    """Normalize a submodule commit subject into a short description."""
+    text = subject.strip()
+
+    if not text:
+        return ""
+
+    if " " in text:
+        first, rest = text.split(" ", 1)
+
+        if re.fullmatch(r"[0-9a-f]{7,40}", first):
+            text = rest.strip()
+
+    text = text.strip("`\"'").strip()
+    text = re.sub(r"^[a-z]+(?:\([^\)]*\))?!?:\s*", "", text, flags=re.IGNORECASE)
+    text = text.rstrip(".")
+    text = re.sub(r"\s+", " ", text).strip()
+
+    if not text:
+        return ""
+
+    lowered = text.lower()
+
+    if lowered in {
+        "update",
+        "updates",
+        "bump",
+        "bump deps",
+        "latest",
+        "sync",
+    }:
+        return ""
+
+    if text[0].isalpha():
+        text = text[0].lower() + text[1:]
+
+    return text
+
+
 def is_submodule_only_change(raw_diff: str) -> bool:
     """Return True if raw diff contains only submodule entries."""
     entries = parse_raw_diff_entries(raw_diff)
@@ -275,14 +314,23 @@ def fallback_submodule_subject(changes: Sequence[SubmoduleChange]) -> str | None
     if len(sorted_changes) == 1:
         change = sorted_changes[0]
         name = os.path.basename(change.path.rstrip("/")) or change.path
+        sha = short_sha(change.new_sha)
 
         if change.status == "added":
-            return f"chore(submodule): add {name} at {short_sha(change.new_sha)}"
+            return f"chore(submodule): add {name} ({sha})"
 
         if change.status == "removed":
             return f"chore(submodule): remove {name}"
 
-        return f"chore(submodule): bump {name} to {short_sha(change.new_sha)}"
+        commit_lines = get_submodule_log_lines(change)
+
+        if commit_lines:
+            description = clean_submodule_description(commit_lines[0])
+
+            if description:
+                return f"chore(submodule): {description} ({sha})"
+
+        return f"chore(submodule): update {name} ({sha})"
 
     return f"chore(submodules): update {len(sorted_changes)} submodules"
 
