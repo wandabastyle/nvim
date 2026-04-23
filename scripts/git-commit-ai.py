@@ -30,31 +30,21 @@ CONVENTIONAL_TYPES = {
     "test",
 }
 
-COMMIT_SUBJECT_PROMPT_TEMPLATE = """You write excellent git commit messages.
+COMMIT_SUBJECT_PROMPT_TEMPLATE = """You write high-quality git commit subjects.
 
 Task:
-Generate exactly one git commit subject for this {diff_kind} diff.
+Generate exactly one subject for this {diff_kind} diff.
 
-## Commits
-- Use conventional-style commit subjects:
-  - fix(...)
-  - feat(...)
-  - chore(...)
-  - docs(...)
-  - refactor(...)
-  - test(...)
-- Use format: type(scope): subject
-  - scope is optional, so type: subject is valid
-- Keep commits scoped: do not mix unrelated changes in the message
-- Never include secrets in the message (tokens, credentials, .env values)
-
-Output rules:
-- Output only the commit subject
-- No quotes
-- One line only
-- Keep it under 72 characters if possible
-- Be specific, not generic
-- Avoid vague phrases like "latest commit" or "latest commits"
+Rules:
+- Output only the subject
+- One line, no quotes
+- Prefer <= 72 chars
+- Use conventional format: type(scope): subject
+- Allowed types: fix, feat, chore, docs, refactor, test
+- Scope is optional
+- Be specific to the actual changes
+- Do not include secrets
+- Avoid vague phrases like "latest commit(s)"
 
 Changed files:
 {changed_files}
@@ -66,21 +56,19 @@ Diff:
 {trimmed_diff}
 """
 
-COMMIT_BODY_PROMPT_TEMPLATE = """You write concise git commit message bodies.
+COMMIT_BODY_PROMPT_TEMPLATE = """You write concise git commit bodies.
 
 Task:
 Generate a commit body for this {diff_kind} diff.
 
 Rules:
-- Output only markdown bullet points
-- No heading, no intro sentence, no conclusion
-- No code fences
-- 3 to 5 bullets
-- Each bullet is one line
+- Output only markdown bullets
+- 3 to 5 bullets, one line each
+- No heading, intro, conclusion, or code fences
 - Focus on key implementation details and user-visible impact
-- Mention tests/validation only if clearly present in diff
-- Do not invent changes not shown in diff
-- Avoid vague phrases like "latest commit" or "latest commits"
+- Mention tests/validation only if clearly shown
+- Do not invent changes
+- Avoid vague phrases like "latest commit(s)"
 
 Changed files:
 {changed_files}
@@ -92,27 +80,20 @@ Diff:
 {trimmed_diff}
 """
 
-PR_TITLE_PROMPT_TEMPLATE = """You write excellent GitHub pull request titles.
+PR_TITLE_PROMPT_TEMPLATE = """You write high-quality GitHub PR titles.
 
 Task:
-Generate exactly one PR title for this diff range {base_ref}...HEAD.
+Generate exactly one title for diff range {base_ref}...HEAD.
 
 Rules:
 - Output only the title
-- One line only
-- No quotes
-- Max 72 characters
-- Use conventional-style format:
-  - fix(...)
-  - feat(...)
-  - chore(...)
-  - docs(...)
-  - refactor(...)
-  - test(...)
-- Use format: type(scope): summary
-  - scope is optional, so type: summary is valid
-- Be specific to the actual change
-- Avoid vague phrases like "latest commit" or "latest commits"
+- One line, no quotes
+- Max 72 chars
+- Use conventional format: type(scope): summary
+- Allowed types: fix, feat, chore, docs, refactor, test
+- Scope is optional
+- Be specific to the actual changes
+- Avoid vague phrases like "latest commit(s)"
 
 Changed files:
 {changed_files}
@@ -127,21 +108,19 @@ Diff:
 {trimmed_diff}
 """
 
-PR_BODY_PROMPT_TEMPLATE = """You write concise GitHub pull request descriptions.
+PR_BODY_PROMPT_TEMPLATE = """You write concise GitHub PR descriptions.
 
 Task:
 Generate a PR body for this diff range {base_ref}...HEAD.
 
 Rules:
-- Output only markdown bullet points
-- No heading, no intro sentence, no conclusion
-- No code fences
-- 3 to 6 bullets
-- Each bullet is one line
+- Output only markdown bullets
+- 3 to 6 bullets, one line each
+- No heading, intro, conclusion, or code fences
 - Focus on user-visible impact and key implementation details
-- Mention tests/validation only if clearly present in diff
-- Do not invent changes not shown in diff
-- Avoid vague phrases like "latest commit" or "latest commits"
+- Mention tests/validation only if clearly shown
+- Do not invent changes
+- Avoid vague phrases like "latest commit(s)"
 
 Changed files:
 {changed_files}
