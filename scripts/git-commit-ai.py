@@ -205,7 +205,14 @@ def save_history_cache() -> None:
         tmp_path = f"{path}.tmp"
 
         with open(tmp_path, "w", encoding="utf-8") as handle:
-            json.dump(_history_cache_data, handle, ensure_ascii=True, sort_keys=True)
+            json.dump(
+                _history_cache_data,
+                handle,
+                ensure_ascii=True,
+                sort_keys=True,
+                indent=2,
+            )
+            handle.write("\n")
 
         os.replace(tmp_path, path)
 
