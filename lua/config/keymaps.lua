@@ -18,6 +18,10 @@ vim.keymap.set("n", "<leader>rt", project_terminal.focus, { silent = true, desc 
 
 vim.keymap.set("n", "<C-Down>", ":m .+1<CR>==", { silent = true, desc = "Move line down" })
 vim.keymap.set("n", "<C-Up>", ":m .-2<CR>==", { silent = true, desc = "Move line up" })
+vim.keymap.set("n", "<C-h>", "<C-w>h", { silent = true, desc = "Focus left window" })
+vim.keymap.set("n", "<C-j>", "<C-w>j", { silent = true, desc = "Focus lower window" })
+vim.keymap.set("n", "<C-k>", "<C-w>k", { silent = true, desc = "Focus upper window" })
+vim.keymap.set("n", "<C-l>", "<C-w>l", { silent = true, desc = "Focus right window" })
 
 vim.keymap.set("i", "yy", "<Esc>", { noremap = true, silent = true, desc = "Exit insert mode" })
 
