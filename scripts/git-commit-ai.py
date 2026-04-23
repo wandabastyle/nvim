@@ -18,6 +18,9 @@ MODEL = "qwen2.5-coder:7b"
 MAX_DIFF_CHARS = 12000
 SUBMODULE_LOG_COUNT = 5
 DEFAULT_PR_BASE = "origin/main"
+HISTORY_CACHE_VERSION = 2
+HISTORY_SAMPLE_SIZE = 200
+HISTORY_TOKEN_LIMIT = 40
 
 RAW_DIFF_LINE_RE = re.compile(
     r"^:(\d{6}) (\d{6}) ([0-9a-f]{7,40}) ([0-9a-f]{7,40}) ([A-Z]\d{0,3})\t(.+)$"
@@ -40,6 +43,10 @@ class SubmoduleChange:
     old_sha: str
     new_sha: str
     status: Literal["updated", "added", "removed"]
+
+
+_history_cache_loaded = False
+_history_cache_data: dict[str, object] = {}
 
 
 def run(cmd: Sequence[str]) -> str | None:
@@ -117,6 +124,247 @@ def get_changed_files() -> str:
         return ""
 
     return status
+
+
+def get_history_cache_path() -> str:
+    """Return absolute path to the persistent history cache file."""
+    xdg_cache_home = os.environ.get("XDG_CACHE_HOME", "").strip()
+
+    if xdg_cache_home:
+        base_dir = xdg_cache_home
+    else:
+        base_dir = os.path.expanduser("~/.cache")
+
+    return os.path.join(
+        base_dir,
+        "git-commit-ai",
+        f"history_profile_v{HISTORY_CACHE_VERSION}.json",
+    )
+
+
+def load_history_cache() -> dict[str, object]:
+    """Load cache JSON once per process and return mutable cache data."""
+    global _history_cache_loaded
+    global _history_cache_data
+
+    if _history_cache_loaded:
+        return _history_cache_data
+
+    _history_cache_loaded = True
+    path = get_history_cache_path()
+
+    try:
+        with open(path, encoding="utf-8") as handle:
+            parsed = cast(object, json.load(handle))
+
+        if not isinstance(parsed, dict):
+            _history_cache_data = {
+                "version": HISTORY_CACHE_VERSION,
+                "repos": {},
+            }
+            return _history_cache_data
+
+        version = parsed.get("version")
+
+        if version != HISTORY_CACHE_VERSION:
+            _history_cache_data = {
+                "version": HISTORY_CACHE_VERSION,
+                "repos": {},
+            }
+            return _history_cache_data
+
+        repos = parsed.get("repos")
+
+        if not isinstance(repos, dict):
+            repos = {}
+
+        _history_cache_data = {
+            "version": HISTORY_CACHE_VERSION,
+            "repos": repos,
+        }
+
+    except Exception:
+        _history_cache_data = {
+            "version": HISTORY_CACHE_VERSION,
+            "repos": {},
+        }
+
+    return _history_cache_data
+
+
+def save_history_cache() -> None:
+    """Persist the in-memory history cache JSON."""
+    if not _history_cache_loaded:
+        return
+
+    path = get_history_cache_path()
+    parent_dir = os.path.dirname(path)
+
+    try:
+        os.makedirs(parent_dir, exist_ok=True)
+        tmp_path = f"{path}.tmp"
+
+        with open(tmp_path, "w", encoding="utf-8") as handle:
+            json.dump(_history_cache_data, handle, ensure_ascii=True, sort_keys=True)
+
+        os.replace(tmp_path, path)
+
+    except Exception:
+        return
+
+
+def get_current_repo_root() -> str | None:
+    """Return the current git top-level path, if available."""
+    root = run([
+        "git",
+        "rev-parse",
+        "--show-toplevel",
+    ])
+
+    if not root:
+        return None
+
+    return root
+
+
+def resolve_history_repo_root() -> str | None:
+    """Resolve repo used for persistent history-based scoring."""
+    env_repo = os.environ.get("GIT_COMMIT_AI_HISTORY_REPO", "").strip()
+
+    if env_repo:
+        resolved = run([
+            "git",
+            "-C",
+            env_repo,
+            "rev-parse",
+            "--show-toplevel",
+        ])
+
+        if resolved:
+            return resolved
+
+    return get_current_repo_root()
+
+
+def get_history_path_head(repo_root: str, submodule_path: str) -> str | None:
+    """Return latest commit hash touching the path in the history repo."""
+    return run([
+        "git",
+        "-C",
+        repo_root,
+        "log",
+        "-n",
+        "1",
+        "--format=%H",
+        "--",
+        submodule_path,
+    ])
+
+
+def tokenize_history_text(text: str) -> list[str]:
+    """Tokenize normalized description text for history profiling."""
+    tokens = re.findall(r"[a-z0-9][a-z0-9._-]*", text.lower())
+    blocked = {
+        "the",
+        "and",
+        "for",
+        "with",
+        "from",
+        "into",
+        "that",
+        "this",
+        "nvim",
+        "config",
+    }
+
+    return [token for token in tokens if token not in blocked and len(token) > 2]
+
+
+def build_history_profile(repo_root: str, submodule_path: str) -> dict[str, object]:
+    """Build a per-submodule profile from recent parent repo subjects."""
+    subjects = run([
+        "git",
+        "-C",
+        repo_root,
+        "log",
+        "--pretty=format:%s",
+        "-n",
+        str(HISTORY_SAMPLE_SIZE),
+        "--",
+        submodule_path,
+    ])
+
+    verb_counts: dict[str, int] = {}
+    token_counts: dict[str, int] = {}
+    usable = 0
+
+    for raw_subject in (subjects or "").splitlines():
+        description = clean_submodule_description(raw_subject)
+
+        if not description:
+            continue
+
+        usable += 1
+        words = description.lower().split()
+
+        if words:
+            first_word = words[0]
+            verb_counts[first_word] = verb_counts.get(first_word, 0) + 1
+
+        for token in tokenize_history_text(description):
+            token_counts[token] = token_counts.get(token, 0) + 1
+
+    sorted_tokens = sorted(
+        token_counts.items(),
+        key=lambda item: (-item[1], item[0]),
+    )[:HISTORY_TOKEN_LIMIT]
+
+    return {
+        "usable_subjects": usable,
+        "verb_counts": verb_counts,
+        "token_counts": {token: count for token, count in sorted_tokens},
+    }
+
+
+def get_history_profile(submodule_path: str) -> dict[str, object]:
+    """Get cached or rebuilt profile for a specific submodule path."""
+    repo_root = resolve_history_repo_root()
+
+    if not repo_root:
+        return {}
+
+    cache_data = load_history_cache()
+    repos_obj = cache_data.get("repos")
+
+    if not isinstance(repos_obj, dict):
+        repos_obj = {}
+        cache_data["repos"] = repos_obj
+
+    repo_entry_obj = repos_obj.get(repo_root)
+
+    if not isinstance(repo_entry_obj, dict):
+        repo_entry_obj = {}
+        repos_obj[repo_root] = repo_entry_obj
+
+    current_head = get_history_path_head(repo_root, submodule_path) or ""
+    path_entry_obj = repo_entry_obj.get(submodule_path)
+
+    if isinstance(path_entry_obj, dict):
+        watermark = path_entry_obj.get("watermark")
+        profile_obj = path_entry_obj.get("profile")
+
+        if watermark == current_head and isinstance(profile_obj, dict):
+            return profile_obj
+
+    profile = build_history_profile(repo_root, submodule_path)
+    repo_entry_obj[submodule_path] = {
+        "watermark": current_head,
+        "profile": profile,
+        "updated_at": int(time.time()),
+    }
+    save_history_cache()
+
+    return profile
 
 
 def parse_raw_diff_entries(raw_diff: str) -> list[RawDiffEntry]:
@@ -270,6 +518,8 @@ def clean_submodule_description(subject: str) -> str:
 
     text = text.strip("`\"'").strip()
     text = re.sub(r"^[a-z]+(?:\([^\)]*\))?!?:\s*", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"^[a-z0-9._-]+:\s+", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"\s*\([0-9a-f]{7,40}\)\s*$", "", text, flags=re.IGNORECASE)
     text = text.rstrip(".")
     text = re.sub(r"\s+", " ", text).strip()
 
@@ -284,6 +534,7 @@ def clean_submodule_description(subject: str) -> str:
         r"^chore\(release\)",
         r"\bbump\s+version\b",
         r"\bmerge\s+pull\s+request\b",
+        r"\blatest\s+commits?\b",
     ]
 
     if any(re.search(pattern, lowered) for pattern in blocked_patterns):
@@ -310,7 +561,36 @@ def clean_submodule_description(subject: str) -> str:
     return text
 
 
-def score_submodule_description(text: str) -> int:
+def history_affinity_score(text: str, history_profile: dict[str, object]) -> int:
+    """Return history-based affinity score for a description."""
+    score = 0
+    lowered = text.lower()
+    words = lowered.split()
+
+    verbs_obj = history_profile.get("verb_counts")
+
+    if isinstance(verbs_obj, dict) and words:
+        first_word = words[0]
+        first_count = verbs_obj.get(first_word)
+
+        if isinstance(first_count, int):
+            score += min(3, first_count)
+
+    tokens_obj = history_profile.get("token_counts")
+
+    if isinstance(tokens_obj, dict):
+        tokens = set(tokenize_history_text(text))
+
+        for token in tokens:
+            token_count = tokens_obj.get(token)
+
+            if isinstance(token_count, int):
+                score += min(2, token_count)
+
+    return score
+
+
+def score_submodule_description(text: str, history_profile: dict[str, object]) -> int:
     """Return a heuristic score for description quality."""
     score = 0
     words = text.split()
@@ -328,10 +608,15 @@ def score_submodule_description(text: str) -> int:
     if any(term in lowered for term in {"update", "changes", "misc", "cleanup", "stuff"}):
         score -= 1
 
+    score += history_affinity_score(text, history_profile)
+
     return score
 
 
-def choose_submodule_description(commit_lines: Sequence[str]) -> str:
+def choose_submodule_description(
+    commit_lines: Sequence[str],
+    history_profile: dict[str, object],
+) -> str:
     """Choose the most descriptive normalized subject from commit lines."""
     best_description = ""
     best_score = -10_000
@@ -342,7 +627,7 @@ def choose_submodule_description(commit_lines: Sequence[str]) -> str:
         if not description:
             continue
 
-        score = score_submodule_description(description)
+        score = score_submodule_description(description, history_profile)
 
         if score > best_score:
             best_score = score
@@ -372,6 +657,7 @@ def fallback_submodule_subject(changes: Sequence[SubmoduleChange]) -> str | None
         change = sorted_changes[0]
         name = os.path.basename(change.path.rstrip("/")) or change.path
         sha = short_sha(change.new_sha)
+        history_profile = get_history_profile(change.path)
 
         if change.status == "added":
             return f"chore(submodule): add {name} ({sha})"
@@ -382,7 +668,7 @@ def fallback_submodule_subject(changes: Sequence[SubmoduleChange]) -> str | None
         commit_lines = get_submodule_log_lines(change)
 
         if commit_lines:
-            description = choose_submodule_description(commit_lines)
+            description = choose_submodule_description(commit_lines, history_profile)
 
             if description:
                 return f"chore(submodule): {name}: {description} ({sha})"
