@@ -1350,6 +1350,55 @@ def normalize_subject(text: str) -> str:
     return normalized
 
 
+def is_valid_conventional_subject(text: str) -> bool:
+    """Return True if text looks like a valid conventional commit subject."""
+    if not text:
+        return False
+
+    lines = text.splitlines()
+    if len(lines) != 1:
+        return False
+
+    first_line = lines[0].strip()
+    length = len(first_line)
+
+    if length < 6 or length > 90:
+        return False
+
+    if first_line.lower() in {"json", "none", "null", "empty"}:
+        return False
+
+    if first_line.startswith("```") or first_line.endswith("```"):
+        return False
+
+    if first_line.startswith("{") or first_line.endswith("}"):
+        return False
+
+    if not re.search(r"^[a-z]+(?:\([^)]*\))?!?:", first_line, re.IGNORECASE):
+        return False
+
+    if " " not in first_line:
+        return False
+
+    type_match = re.match(r"^([a-z]+)", first_line, re.IGNORECASE)
+    if type_match and type_match.group(1).lower() not in CONVENTIONAL_TYPES:
+        return False
+
+    parts = first_line.split(":", 1)
+    if len(parts) != 2 or not parts[1].strip():
+        return False
+
+    return True
+
+
+def fallback_commit_subject(scope: str | None) -> str:
+    """Return a deterministic fallback commit subject."""
+    if scope:
+        return f"chore({scope}): update tracked changes"
+
+    return "chore(config): update tracked changes"
+
+
 def ask_ollama_commit_body(
     diff_kind: Literal["staged", "working"],
     changed_files: str,
@@ -1540,6 +1589,9 @@ def handle_commit_mode(mode: Literal["commit", "commit_body"]) -> int:
     commit_scope = derive_commit_scope(commit_paths)
     scoped_message = enforce_scope_on_subject(normalized_message, commit_scope)
 
+    if not is_valid_conventional_subject(scoped_message):
+        scoped_message = fallback_commit_subject(commit_scope)
+
     print(scoped_message)
     return 0
 
@@ -1594,7 +1646,13 @@ def handle_pr_title_mode(base_ref: str) -> int:
     if not title:
         return 0
 
-    print(normalize_subject(title))
+    normalized_title = normalize_subject(title)
+
+    if not is_valid_conventional_subject(normalized_title):
+        print(fallback_commit_subject(None))
+        return 0
+
+    print(normalized_title)
     return 0
 
 
