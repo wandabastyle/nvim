@@ -984,7 +984,15 @@ def fallback_submodule_subject(changes: Sequence[SubmoduleChange]) -> str | None
 
         return f"chore(submodule): sync upstream changes in {name} ({sha})"
 
-    return f"chore(submodules): update {len(sorted_changes)} submodules"
+    names = [os.path.basename(c.path.rstrip("/")) or c.path for c in sorted_changes]
+    count = len(names)
+
+    if count <= 3:
+        return f"chore(submodules): sync {', '.join(names)}"
+
+    first_few = names[:3]
+    remaining = count - 3
+    return f"chore(submodules): sync {', '.join(first_few)} + {remaining} more"
 
 
 def get_pr_diff(base_ref: str) -> str | None:
