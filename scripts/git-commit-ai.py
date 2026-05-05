@@ -1210,11 +1210,15 @@ def ensure_ollama() -> None:
 
 def request_ollama_text(prompt: str, timeout: float = 80) -> str | None:
     """Send prompt to Ollama and return response text."""
+    # Include an explicit context window size to avoid the default 4096‑token truncation.
+    # The model supports up to 32768 tokens; 8192 provides ample headroom for our
+    # diff + prompt while keeping memory usage modest.
     payload: dict[str, object] = {
         "model": MODEL,
         "prompt": prompt,
         "stream": False,
         "keep_alive": "10m",
+        "options": {"num_ctx": 8192},
     }
 
     request = urllib.request.Request(
