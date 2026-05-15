@@ -32,12 +32,10 @@ vim.opt.winblend = 0
 vim.opt.conceallevel = 0
 vim.opt.concealcursor = ""
 vim.opt.synmaxcol = 300
-vim.opt.fillchars = { eob = " "}
+vim.opt.fillchars = { eob = " " }
 
 local undodir = vim.fn.expand("~/.vim/undodir")
-if
-	vim.fn.isdirectory(undodir) == 0
-then
+if vim.fn.isdirectory(undodir) == 0 then
 	vim.fn.mkdir(undodir, "p")
 end
 
@@ -65,8 +63,6 @@ vim.opt.clipboard:append("unnamedplus")
 vim.opt.modifiable = true
 vim.opt.encoding = "UTF-8"
 
-vim.opt.foldmethod = "expr"
-vim.opt.foldexpr = "v:lua.vim.treesitter.foldexpr()"
 vim.opt.foldlevel = 99
 
 vim.opt.splitbelow = true

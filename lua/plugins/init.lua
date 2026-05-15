@@ -1,19 +1,34 @@
-vim.pack.add({
-	{ src = "https://github.com/folke/tokyonight.nvim" },
-	{ src = "https://github.com/nvim-tree/nvim-web-devicons" },
-	{ src = "https://github.com/nvim-lualine/lualine.nvim" },
-	{ src = "https://github.com/neovim/nvim-lspconfig" },
-	{ src = "https://github.com/stevearc/conform.nvim" },
-	{ src = "https://github.com/Saghen/blink.cmp", version = "v1" },
-	{ src = "https://github.com/echasnovski/mini.pick" },
-	{ src = "https://github.com/stevearc/oil.nvim" },
-	{ src = "https://github.com/lewis6991/gitsigns.nvim" },
-	{ src = "https://github.com/windwp/nvim-autopairs" },
-	{ src = "https://github.com/Vimjas/vim-python-pep8-indent" },
-	{ src = "https://github.com/ethanholz/nvim-lastplace" },
-	{ src = "https://github.com/nvim-treesitter/nvim-treesitter" },
-	{ src = "https://github.com/folke/which-key.nvim" },
-	{ src = "https://github.com/rcarriga/nvim-notify" },
-	{ src = "https://github.com/MunifTanjim/nui.nvim" },
-	{ src = "https://github.com/folke/noice.nvim" },
+local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
+
+if not vim.uv.fs_stat(lazypath) then
+	vim.fn.system({
+		"git",
+		"clone",
+		"--filter=blob:none",
+		"https://github.com/folke/lazy.nvim.git",
+		"--branch=stable",
+		lazypath,
+	})
+end
+
+vim.opt.rtp:prepend(lazypath)
+
+require("lazy").setup({
+	spec = {
+		{ import = "plugins.ui" },
+		{ import = "plugins.editing" },
+		{ import = "plugins.completion" },
+		{ import = "plugins.formatting" },
+		{ import = "plugins.treesitter" },
+		{ import = "plugins.lsp" },
+	},
+	change_detection = {
+		notify = false,
+	},
+	install = {
+		colorscheme = { "tokyonight" },
+	},
+	ui = {
+		border = "rounded",
+	},
 })

@@ -1,16 +1,11 @@
 vim.g.mapleader = " "
+vim.g.loaded_netrw = 1
+vim.g.loaded_netrwPlugin = 1
 
 require("config.options")
 require("config.diagnostics")
 require("plugins")
-require("plugins.ui")
 require("config.highlights")
-require("plugins.editing")
-require("plugins.completion")
-require("plugins.formatting")
-vim.cmd("packadd! nvim-treesitter")
-require("plugins.treesitter")
-require("plugins.lsp")
 require("features.project_terminal").setup()
 require("config.commands")
 require("config.keymaps")

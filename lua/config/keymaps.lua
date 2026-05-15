@@ -1,13 +1,18 @@
-local pick = require("mini.pick").builtin
 local project_terminal = require("features.project_terminal")
-local wk = require("which-key")
+
+local function snacks_pick(name)
+	return function()
+		require("snacks").picker[name]()
+	end
+end
 
 vim.keymap.set("n", "<leader>w", "<cmd>write<CR>", { desc = "Save file" })
 vim.keymap.set("n", "<leader>q", "<cmd>quit<CR>", { desc = "Quit window" })
 vim.keymap.set({ "n", "v", "x" }, "<leader>y", '"+y<CR>', { desc = "Yank to clipboard" })
 vim.keymap.set({ "n", "v", "x" }, "<leader>d", '"+d<CR>', { desc = "Delete to clipboard" })
 
-vim.keymap.set("n", "<leader>?", function()
+vim.keymap.set("n", "<leader>lk", function()
+	local wk = require("which-key")
 	wk.show({ global = false })
 end, { desc = "Buffer keymaps" })
 
@@ -25,11 +30,14 @@ vim.keymap.set("n", "<C-l>", "<C-w>l", { silent = true, desc = "Focus right wind
 
 vim.keymap.set("i", "yy", "<Esc>", { noremap = true, silent = true, desc = "Exit insert mode" })
 
-vim.keymap.set("n", "<leader>ff", pick.files, { desc = "Find files" })
-vim.keymap.set("n", "<leader>fb", pick.buffers, { desc = "Find buffers" })
-vim.keymap.set("n", "<leader>fg", pick.grep, { desc = "Live grep" })
-vim.keymap.set("n", "<leader>h", pick.help, { desc = "Help tags" })
-
-vim.keymap.set("n", "<leader>e", "<cmd>Oil<CR>", { desc = "Open explorer" })
+vim.keymap.set("n", "<leader>ff", snacks_pick("files"), { desc = "Find files" })
+vim.keymap.set("n", "<leader>fb", snacks_pick("buffers"), { desc = "Find buffers" })
+vim.keymap.set("n", "<leader>fg", snacks_pick("grep"), { desc = "Live grep" })
+vim.keymap.set("n", "<leader>fh", snacks_pick("help"), { desc = "Help tags" })
+vim.keymap.set("n", "<leader>fr", snacks_pick("recent"), { desc = "Recent files" })
+vim.keymap.set("n", "<leader>fd", snacks_pick("diagnostics"), { desc = "Diagnostics" })
+vim.keymap.set("n", "<leader>fc", function()
+	require("snacks").picker.files({ cwd = vim.fn.stdpath("config") })
+end, { desc = "Find config files" })
 
 vim.keymap.set("n", "<Esc>", "<Esc>:nohlsearch<CR>", { silent = true, desc = "Clear search highlight" })

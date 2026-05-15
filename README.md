@@ -7,6 +7,7 @@ This setup is for users who want a practical editor with LSP, formatting, lintin
 ## Features
 
 - Built-in LSP setup for common languages with completion powered by `blink.cmp`.
+- Lazy-loaded plugins managed by `lazy.nvim`, with Mason-assisted LSP/tool installation.
 - Formatting and linting workflow integrated into editor actions.
 - Git-oriented workflow, including quick run/build commands and commit support.
 - AI commit message generation from git diff using Ollama.
@@ -22,19 +23,19 @@ Required base tools:
 - `fd`
 - `nodejs` (required by many language servers)
 - `python` (for scripts)
-- `stylua` (Lua formatter)
-- `shellcheck`
-- `shfmt` (shell formatting)
+- `stylua` (Lua formatter; Mason can install it)
+- `shellcheck` (Mason can install it)
+- `shfmt` (shell formatting; Mason can install it)
 - `clang` or `clangd`
 
 LSP servers/tools used by this config:
 
 - `lua-language-server` (`lua_ls`)
-- `nil_ls` (`nil`)
 - `rust-analyzer`
 - `ty` (`ty`)
 - `ruff` (`ruff`)
 - `typescript` + `typescript-language-server` (`ts_ls`)
+- `svelte-language-server` (`svelte`)
 
 Optional but recommended:
 
@@ -44,7 +45,7 @@ Optional but recommended:
 Arch Linux / `yay` example (base tools + LSP tools):
 
 ```bash
-yay -S neovim-nightly-bin git ripgrep fd nodejs python stylua shellcheck shfmt clang lua-language-server nil rust-analyzer ty ruff typescript typescript-language-server lazygit ollama
+yay -S neovim-nightly-bin git ripgrep fd nodejs python stylua shellcheck shfmt clang lua-language-server rust-analyzer ty ruff typescript typescript-language-server svelte-language-server lazygit ollama
 ```
 
 `neovim-nightly-bin` is used to avoid occasional `tree-sitter` ABI mismatches that can happen with source-built `neovim-git` after system library upgrades.
@@ -81,11 +82,14 @@ This is a concise overview of keymaps defined in the config.
 | `<leader>q` | Quit window |
 | `<leader>y` | Yank to system clipboard |
 | `<leader>d` | Delete to system clipboard |
-| `<leader>?` | Show buffer keymaps (`which-key`) |
-| `<leader>ff` | Find files (`mini.pick`) |
-| `<leader>fb` | Find buffers (`mini.pick`) |
-| `<leader>fg` | Live grep (`mini.pick`) |
-| `<leader>h` | Help tags picker |
+| `<leader>lk` | Show buffer keymaps (`which-key`) |
+| `<leader>ff` | Find files (`snacks.nvim`) |
+| `<leader>fb` | Find buffers (`snacks.nvim`) |
+| `<leader>fg` | Live grep (`snacks.nvim`) |
+| `<leader>fh` | Help tags picker |
+| `<leader>fr` | Recent files |
+| `<leader>fd` | Diagnostics picker |
+| `<leader>fc` | Find config files |
 | `<leader>e` | Open file explorer (`Oil`) |
 | `<C-Up>` / `<C-Down>` | Move current line up/down |
 | `<Esc>` | Clear search highlight |
@@ -103,11 +107,27 @@ This is a concise overview of keymaps defined in the config.
 | `<leader>ld` | Line diagnostics (floating window) |
 | `<leader>ll` | Diagnostics list (location list) |
 | `<leader>ls` | Workspace symbol search (prompt) |
-| `[d` / `]d` | Previous / next diagnostic |
+| `<leader>lp` / `<leader>ln` | Previous / next diagnostic |
 | `<C-Space>` (insert) | Trigger completion |
 
 Completion is powered by `blink.cmp`, and LSP capabilities are merged via `require("blink.cmp").get_lsp_capabilities(...)`.
 Snippet expansion uses Neovim's native `vim.snippet` engine (no external snippet engine/plugin required).
+
+Mason provides installation helpers for Lua, Rust, Python, TypeScript, Svelte, and common formatter/linter tools. Open it with `<leader>mm`.
+
+### Tools
+
+| Key | Action |
+| --- | --- |
+| `<leader>mm` | Open Mason registry |
+| `<leader>xx` | Workspace diagnostics (`trouble.nvim`) |
+| `<leader>xb` | Buffer diagnostics (`trouble.nvim`) |
+| `<leader>xs` | Symbols (`trouble.nvim`) |
+| `<leader>xl` | Location list (`trouble.nvim`) |
+| `<leader>xq` | Quickfix list (`trouble.nvim`) |
+| `<leader>tt` | TODO list |
+| `<leader>tq` | TODO quickfix |
+| `<leader>tp` / `<leader>tn` | Previous / next TODO comment |
 
 ### Git
 

@@ -1,14 +1,23 @@
-local autopairs = require("nvim-autopairs")
-local lastplace = require("nvim-lastplace")
-
-autopairs.setup({
-	check_ts = true,
-	enable_check_bracket_line = false,
-})
-
-lastplace.setup({
-	lastplace_ignore_buftype = { "quickfix", "nofile", "help" },
-	lastplace_ignore_filetype = { "gitcommit", "gitrebase" },
-	lastplace_open_folds = true,
-})
-
+return {
+	{
+		"windwp/nvim-autopairs",
+		event = "InsertEnter",
+		opts = {
+			check_ts = true,
+			enable_check_bracket_line = false,
+		},
+	},
+	{
+		"ethanholz/nvim-lastplace",
+		event = "BufReadPost",
+		opts = {
+			lastplace_ignore_buftype = { "quickfix", "nofile", "help" },
+			lastplace_ignore_filetype = { "gitcommit", "gitrebase" },
+			lastplace_open_folds = true,
+		},
+	},
+	{
+		"Vimjas/vim-python-pep8-indent",
+		ft = "python",
+	},
+}
