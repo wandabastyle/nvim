@@ -39,6 +39,10 @@ vim.lsp.enable({ "lua_ls", "nil_ls", "rust_analyzer", "ty", "ruff", "ts_ls" })
 vim.api.nvim_create_autocmd("LspAttach", {
 	callback = function(ev)
 		local client = vim.lsp.get_client_by_id(ev.data.client_id)
+		if not client then
+			return
+		end
+
 		local opts = { buffer = ev.buf }
 
 		vim.keymap.set("n", "K", vim.lsp.buf.hover, vim.tbl_extend("force", opts, { desc = "Hover documentation" }))

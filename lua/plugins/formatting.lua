@@ -33,6 +33,7 @@ local function format_with_notify()
 		conform.format({
 			async = false,
 			lsp_format = "fallback",
+			timeout_ms = 3000,
 			quiet = false,
 		}, function(format_err)
 			if format_err then
@@ -78,6 +79,7 @@ vim.api.nvim_create_autocmd("BufWritePre", {
 			bufnr = args.buf,
 			async = false,
 			lsp_format = "fallback",
+			timeout_ms = 3000,
 			quiet = true,
 		})
 

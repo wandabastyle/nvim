@@ -1,6 +1,7 @@
 vim.g.mapleader = " "
 
 require("config.options")
+require("config.diagnostics")
 require("plugins")
 require("plugins.ui")
 require("config.highlights")

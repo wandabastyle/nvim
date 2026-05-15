@@ -138,6 +138,11 @@ function M.setup()
 			if ev.buf == M.state.buf and vim.v.event.status ~= 0 then
 				vim.notify(("Project terminal exited with code %d"):format(vim.v.event.status), vim.log.levels.WARN)
 			end
+
+			if ev.buf == M.state.buf then
+				M.state.buf = nil
+				M.state.win = nil
+			end
 		end,
 	})
 end
