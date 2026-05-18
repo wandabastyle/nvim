@@ -14,7 +14,7 @@ from typing import Literal, TypedDict, cast
 
 OLLAMA_URL = "http://127.0.0.1:11434/api/generate"
 OLLAMA_TAGS_URL = "http://127.0.0.1:11434/api/tags"
-MODEL = "ministral-3:8b-cloud"
+MODEL = "qwen3-coder-next:cloud"
 MAX_DIFF_CHARS = 12000
 SUBMODULE_LOG_COUNT = 5
 DEFAULT_PR_BASE = "origin/main"
@@ -236,23 +236,27 @@ def get_diff() -> tuple[Literal["staged", "working"] | None, str | None]:
 
     Return (None, None) if there is no diff.
     """
-    staged = run([
-        "git",
-        "diff",
-        "--cached",
-        "--no-ext-diff",
-        "--unified=0",
-    ])
+    staged = run(
+        [
+            "git",
+            "diff",
+            "--cached",
+            "--no-ext-diff",
+            "--unified=0",
+        ]
+    )
 
     if staged:
         return "staged", staged
 
-    working = run([
-        "git",
-        "diff",
-        "--no-ext-diff",
-        "--unified=0",
-    ])
+    working = run(
+        [
+            "git",
+            "diff",
+            "--no-ext-diff",
+            "--unified=0",
+        ]
+    )
 
     if working:
         return "working", working
@@ -267,11 +271,13 @@ def get_changed_files() -> str:
     This is useful context for the LLM because filenames often make the
     intent of a change much clearer.
     """
-    status = run([
-        "git",
-        "status",
-        "--short",
-    ])
+    status = run(
+        [
+            "git",
+            "status",
+            "--short",
+        ]
+    )
 
     if not status:
         return ""
@@ -333,7 +339,9 @@ def enforce_scope_on_subject(subject: str, scope: str | None) -> str:
     if not scope:
         return subject
 
-    match = re.match(r"^([a-z]+)(?:\([^\)]*\))?(!)?:\s*(.+)$", subject, flags=re.IGNORECASE)
+    match = re.match(
+        r"^([a-z]+)(?:\([^\)]*\))?(!)?:\s*(.+)$", subject, flags=re.IGNORECASE
+    )
 
     if not match:
         return subject
@@ -535,11 +543,13 @@ def save_history_cache() -> None:
 
 def get_current_repo_root() -> str | None:
     """Return the current git top-level path, if available."""
-    root = run([
-        "git",
-        "rev-parse",
-        "--show-toplevel",
-    ])
+    root = run(
+        [
+            "git",
+            "rev-parse",
+            "--show-toplevel",
+        ]
+    )
 
     if not root:
         return None
@@ -552,13 +562,15 @@ def resolve_history_repo_root() -> str | None:
     env_repo = os.environ.get("GIT_COMMIT_AI_HISTORY_REPO", "").strip()
 
     if env_repo:
-        resolved = run([
-            "git",
-            "-C",
-            env_repo,
-            "rev-parse",
-            "--show-toplevel",
-        ])
+        resolved = run(
+            [
+                "git",
+                "-C",
+                env_repo,
+                "rev-parse",
+                "--show-toplevel",
+            ]
+        )
 
         if resolved:
             return resolved
@@ -568,17 +580,19 @@ def resolve_history_repo_root() -> str | None:
 
 def get_history_path_head(repo_root: str, submodule_path: str) -> str | None:
     """Return latest commit hash touching the path in the history repo."""
-    return run([
-        "git",
-        "-C",
-        repo_root,
-        "log",
-        "-n",
-        "1",
-        "--format=%H",
-        "--",
-        submodule_path,
-    ])
+    return run(
+        [
+            "git",
+            "-C",
+            repo_root,
+            "log",
+            "-n",
+            "1",
+            "--format=%H",
+            "--",
+            submodule_path,
+        ]
+    )
 
 
 def tokenize_history_text(text: str) -> list[str]:
@@ -602,17 +616,19 @@ def tokenize_history_text(text: str) -> list[str]:
 
 def build_history_profile(repo_root: str, submodule_path: str) -> HistoryProfile:
     """Build a per-submodule profile from recent parent repo subjects."""
-    subjects = run([
-        "git",
-        "-C",
-        repo_root,
-        "log",
-        "--pretty=format:%s",
-        "-n",
-        str(HISTORY_SAMPLE_SIZE),
-        "--",
-        submodule_path,
-    ])
+    subjects = run(
+        [
+            "git",
+            "-C",
+            repo_root,
+            "log",
+            "--pretty=format:%s",
+            "-n",
+            str(HISTORY_SAMPLE_SIZE),
+            "--",
+            submodule_path,
+        ]
+    )
 
     verb_counts: dict[str, int] = {}
     token_counts: dict[str, int] = {}
@@ -751,30 +767,34 @@ def get_submodule_log_lines(change: SubmoduleChange) -> list[str]:
     if change.status != "updated":
         return []
 
-    forward_log = run([
-        "git",
-        "-C",
-        change.path,
-        "log",
-        "--oneline",
-        "-n",
-        str(SUBMODULE_LOG_COUNT),
-        f"{change.old_sha}..{change.new_sha}",
-    ])
+    forward_log = run(
+        [
+            "git",
+            "-C",
+            change.path,
+            "log",
+            "--oneline",
+            "-n",
+            str(SUBMODULE_LOG_COUNT),
+            f"{change.old_sha}..{change.new_sha}",
+        ]
+    )
 
     if forward_log:
         return forward_log.splitlines()
 
-    reverse_log = run([
-        "git",
-        "-C",
-        change.path,
-        "log",
-        "--oneline",
-        "-n",
-        str(SUBMODULE_LOG_COUNT),
-        f"{change.new_sha}..{change.old_sha}",
-    ])
+    reverse_log = run(
+        [
+            "git",
+            "-C",
+            change.path,
+            "log",
+            "--oneline",
+            "-n",
+            str(SUBMODULE_LOG_COUNT),
+            f"{change.new_sha}..{change.old_sha}",
+        ]
+    )
 
     if reverse_log:
         return reverse_log.splitlines()
@@ -908,13 +928,17 @@ def score_submodule_description(text: str, history_profile: HistoryProfile) -> i
     if 4 <= len(words) <= 12:
         score += 2
 
-    if re.match(r"^(add|fix|refactor|improve|clean|optimize|simplify|handle)\b", lowered):
+    if re.match(
+        r"^(add|fix|refactor|improve|clean|optimize|simplify|handle)\b", lowered
+    ):
         score += 2
 
     if any(term in lowered for term in {"nvim", "config", "keymap", "lsp", "plugin"}):
         score += 1
 
-    if any(term in lowered for term in {"update", "changes", "misc", "cleanup", "stuff"}):
+    if any(
+        term in lowered for term in {"update", "changes", "misc", "cleanup", "stuff"}
+    ):
         score -= 1
 
     score += history_affinity_score(text, history_profile)
@@ -997,13 +1021,15 @@ def fallback_submodule_subject(changes: Sequence[SubmoduleChange]) -> str | None
 
 def get_pr_diff(base_ref: str) -> str | None:
     """Return the PR diff for a base ref, or None."""
-    pr_diff = run([
-        "git",
-        "diff",
-        "--no-ext-diff",
-        "--unified=0",
-        f"{base_ref}...HEAD",
-    ])
+    pr_diff = run(
+        [
+            "git",
+            "diff",
+            "--no-ext-diff",
+            "--unified=0",
+            f"{base_ref}...HEAD",
+        ]
+    )
 
     if not pr_diff:
         return None
@@ -1032,12 +1058,14 @@ def get_commit_raw_diff(diff_kind: Literal["staged", "working"]) -> str:
 
 def get_pr_raw_diff(base_ref: str) -> str:
     """Return raw diff for PR mode."""
-    raw_diff = run([
-        "git",
-        "diff",
-        "--raw",
-        f"{base_ref}...HEAD",
-    ])
+    raw_diff = run(
+        [
+            "git",
+            "diff",
+            "--raw",
+            f"{base_ref}...HEAD",
+        ]
+    )
 
     if not raw_diff:
         return ""
@@ -1047,12 +1075,14 @@ def get_pr_raw_diff(base_ref: str) -> str:
 
 def get_pr_changed_files(base_ref: str) -> str:
     """Return a changed-files list for a PR range."""
-    changed = run([
-        "git",
-        "diff",
-        "--name-status",
-        f"{base_ref}...HEAD",
-    ])
+    changed = run(
+        [
+            "git",
+            "diff",
+            "--name-status",
+            f"{base_ref}...HEAD",
+        ]
+    )
 
     if not changed:
         return ""
@@ -1062,12 +1092,14 @@ def get_pr_changed_files(base_ref: str) -> str:
 
 def get_pr_commits(base_ref: str) -> str:
     """Return short commit log for commits in the PR range."""
-    commits = run([
-        "git",
-        "log",
-        "--oneline",
-        f"{base_ref}..HEAD",
-    ])
+    commits = run(
+        [
+            "git",
+            "log",
+            "--oneline",
+            f"{base_ref}..HEAD",
+        ]
+    )
 
     if not commits:
         return ""
@@ -1186,9 +1218,7 @@ def ensure_ollama() -> None:
             time.sleep(0.2)
 
         if not ollama_ping():
-            raise RuntimeError(
-                "Ollama server did not come up"
-            )
+            raise RuntimeError("Ollama server did not come up")
 
     timer_result = subprocess.run(
         [
@@ -1228,7 +1258,9 @@ def request_ollama_text(prompt: str, timeout: float = 80) -> str | None:
         method="POST",
     )
 
-    with cast(HTTPResponse, urllib.request.urlopen(request, timeout=timeout)) as response:
+    with cast(
+        HTTPResponse, urllib.request.urlopen(request, timeout=timeout)
+    ) as response:
         body = response.read().decode("utf-8")
 
     parsed = cast(object, json.loads(body))
@@ -1701,11 +1733,13 @@ def main() -> int:
 
     mode, cli_base_ref = parsed_args
 
-    inside = run([
-        "git",
-        "rev-parse",
-        "--is-inside-work-tree",
-    ])
+    inside = run(
+        [
+            "git",
+            "rev-parse",
+            "--is-inside-work-tree",
+        ]
+    )
 
     if inside != "true":
         # Quiet exit is best when this is triggered from Neovim.
