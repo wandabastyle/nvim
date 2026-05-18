@@ -14,7 +14,7 @@ from typing import Literal, TypedDict, cast
 
 OLLAMA_URL = "http://127.0.0.1:11434/api/generate"
 OLLAMA_TAGS_URL = "http://127.0.0.1:11434/api/tags"
-MODEL = "qwen3-coder-next:cloud"
+MODEL = "gemma3:4b-cloud"
 MAX_DIFF_CHARS = 12000
 SUBMODULE_LOG_COUNT = 5
 DEFAULT_PR_BASE = "origin/main"
