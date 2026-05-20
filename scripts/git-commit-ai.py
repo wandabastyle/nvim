@@ -324,7 +324,12 @@ def derive_commit_scope(changed_paths: Sequence[str]) -> str | None:
         return None
 
     if len(changed_paths) == 1:
-        return changed_paths[0]
+        path = changed_paths[0]
+        # Use parent directory as scope, or filename stem if at root
+        if "/" in path:
+            return path.rsplit("/", 1)[0]
+        name = os.path.splitext(path)[0]
+        return name.lower() if name else path
 
     top_levels = {path.split("/", 1)[0] for path in changed_paths}
 
