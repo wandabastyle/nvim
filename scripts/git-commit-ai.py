@@ -1697,8 +1697,12 @@ def handle_pr_title_mode(base_ref: str) -> int:
 
     normalized_title = normalize_subject(title)
 
+    # Derive scope from changed files in PR for fallback
+    pr_changed_paths = pr_inputs.changed_files.splitlines()
+    pr_scope = derive_commit_scope(pr_changed_paths)
+
     if not is_valid_conventional_subject(normalized_title):
-        print(fallback_commit_subject(None))
+        print(fallback_commit_subject(pr_scope))
         return 0
 
     print(normalized_title)
