@@ -22,6 +22,7 @@ DEFAULT_PR_BASE = "origin/main"
 HISTORY_CACHE_VERSION = 2
 HISTORY_SAMPLE_SIZE = 200
 HISTORY_TOKEN_LIMIT = 40
+PR_COMMIT_LIST_LIMIT = 12
 CONVENTIONAL_TYPES = {
     "fix",
     "feat",
@@ -94,12 +95,14 @@ Rules:
 - Allowed types: fix, feat, chore, docs, refactor, test
 - Scope is optional
 - Be specific to the actual changes
+- Prioritize the most important or user-facing changes across the whole PR, not just the newest commit
+- Use the commits list as context, but do not anchor on the last commit
 - Avoid vague phrases like "latest commit(s)"
 
 Changed files:
 {changed_files}
 
-Commits in range:
+Commits in range (already sorted by impact, most important first):
 {pr_commits}
 
 Submodule changes:
@@ -121,12 +124,14 @@ Rules:
 - Focus on user-visible impact and key implementation details
 - Mention tests/validation only if clearly shown
 - Do not invent changes
+- Prioritize the most important or user-facing changes across the whole PR, not just the newest commit
+- Use the commits list as context, but do not anchor on the last commit
 - Avoid vague phrases like "latest commit(s)"
 
 Changed files:
 {changed_files}
 
-Commits in range:
+Commits in range (already sorted by impact, most important first):
 {pr_commits}
 
 Submodule changes:
@@ -1097,20 +1102,96 @@ def get_pr_changed_files(base_ref: str) -> str:
 
 
 def get_pr_commits(base_ref: str) -> str:
-    """Return short commit log for commits in the PR range."""
-    commits = run(
+    """Return an impact-ordered commit summary for the PR range."""
+    log_output = run(
         [
             "git",
             "log",
-            "--oneline",
             f"{base_ref}..HEAD",
+            "--no-merges",
+            "--format=%H%x09%s",
+            "--shortstat",
         ]
     )
 
-    if not commits:
+    if not log_output:
         return ""
 
-    return commits
+    commits: list[tuple[int, int, str, str, str]] = []
+    current_sha = ""
+    current_subject = ""
+    current_files = 0
+    current_insertions = 0
+    current_deletions = 0
+
+    shortstat_re = re.compile(
+        r"(?:(\d+) files? changed)?(?:, (\d+) insertions?\(\+\))?(?:, (\d+) deletions?\(-\))?"
+    )
+
+    def flush_commit() -> None:
+        nonlocal current_sha, current_subject, current_files, current_insertions, current_deletions
+
+        if not current_sha or not current_subject:
+            return
+
+        total_changes = current_insertions + current_deletions
+        commits.append(
+            (
+                total_changes,
+                current_files,
+                current_sha,
+                current_subject,
+                f"- {current_sha[:10]} {current_subject} ({current_files} files, +{current_insertions}/-{current_deletions})",
+            )
+        )
+
+        current_sha = ""
+        current_subject = ""
+        current_files = 0
+        current_insertions = 0
+        current_deletions = 0
+
+    for line in log_output.splitlines():
+        stripped = line.strip()
+
+        if not stripped:
+            continue
+
+        if "\t" in line and re.fullmatch(r"[0-9a-f]{7,40}\t.+", stripped):
+            flush_commit()
+            current_sha, current_subject = stripped.split("\t", 1)
+            current_subject = current_subject.strip()
+            continue
+
+        stat_match = shortstat_re.search(stripped)
+
+        if not stat_match:
+            continue
+
+        files_obj, insertions_obj, deletions_obj = stat_match.groups()
+        current_files = int(files_obj or 0)
+        current_insertions = int(insertions_obj or 0)
+        current_deletions = int(deletions_obj or 0)
+
+    flush_commit()
+
+    if not commits:
+        fallback = run(
+            [
+                "git",
+                "log",
+                "--oneline",
+                f"{base_ref}..HEAD",
+                "--no-merges",
+            ]
+        )
+
+        return fallback or ""
+
+    commits.sort(key=lambda item: (-item[0], -item[1], item[2]))
+    limited = commits[:PR_COMMIT_LIST_LIMIT]
+
+    return "\n".join(item[4] for item in limited)
 
 
 def parse_args(
