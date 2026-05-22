@@ -23,6 +23,57 @@ HISTORY_CACHE_VERSION = 2
 HISTORY_SAMPLE_SIZE = 200
 HISTORY_TOKEN_LIMIT = 40
 PR_COMMIT_LIST_LIMIT = 12
+PR_PRIMARY_FILE_LIMIT = 8
+CODE_FILE_EXTENSIONS = {
+    ".c",
+    ".cc",
+    ".cpp",
+    ".cs",
+    ".css",
+    ".go",
+    ".h",
+    ".hh",
+    ".hpp",
+    ".html",
+    ".java",
+    ".js",
+    ".jsx",
+    ".mdx",
+    ".py",
+    ".rs",
+    ".scss",
+    ".svelte",
+    ".ts",
+    ".tsx",
+    ".vue",
+}
+PRIMARY_APP_PATH_HINTS = {
+    "app",
+    "client",
+    "components",
+    "frontend",
+    "lib",
+    "pages",
+    "src",
+    "ui",
+    "web",
+}
+META_PATH_HINTS = {
+    ".github",
+    "agent",
+    "agents",
+    "ci",
+    "config",
+    "docs",
+    "script",
+    "scripts",
+    "skill",
+    "skills",
+    "tooling",
+    "tools",
+    "workflow",
+    "workflows",
+}
 CONVENTIONAL_TYPES = {
     "fix",
     "feat",
@@ -122,22 +173,21 @@ Rules:
 - 3 to 6 bullets, one line each
 - No heading, intro, conclusion, or code fences
 - Start with the overall PR change, then list the most important supporting details
-- Focus on user-visible impact and key implementation details
+- Focus on user-visible impact and key implementation details in the application itself
 - Mention tests/validation only if clearly shown
 - Do not invent changes
-- Prioritize the most important or user-facing changes across the whole PR
-- Use the impact highlights as primary context
-- Use the commits list only as secondary context, and do not anchor on the last commit
+- Prioritize the main app changes over tooling, skills, docs, and other support files unless those are the primary change
+- Use the primary file list and impact highlights as the main context
 - Avoid vague phrases like "latest commit(s)"
 
 Changed files:
 {changed_files}
 
+Primary app files:
+{pr_primary_files}
+
 Impact highlights by diff size:
 {pr_highlights}
-
-Commits in range (already sorted by impact, most important first):
-{pr_commits}
 
 Submodule changes:
 {submodule_context}
@@ -186,6 +236,7 @@ class PRModeInputs:
     pr_raw_diff: str
     submodule_changes: list[SubmoduleChange]
     submodule_context: str
+    pr_primary_files: str
     pr_highlights: str
     pr_commits: str
 
@@ -1246,6 +1297,81 @@ def get_pr_highlights(base_ref: str) -> str:
     return "\n".join(item[1] for item in limited)
 
 
+def score_pr_file_path(path: str) -> int:
+    """Score a changed file path for primary-app relevance."""
+    lowered = path.lower()
+    basename = lowered.rsplit("/", 1)[-1]
+    score = 0
+
+    if basename in {"readme", "readme.md", "license", "changelog.md"}:
+        score -= 6
+
+    for ext in CODE_FILE_EXTENSIONS:
+        if lowered.endswith(ext):
+            score += 5
+            break
+
+    for hint in PRIMARY_APP_PATH_HINTS:
+        if f"/{hint}/" in f"/{lowered}/":
+            score += 2
+
+    for hint in META_PATH_HINTS:
+        if f"/{hint}/" in f"/{lowered}/" or lowered.startswith(f"{hint}/"):
+            score -= 4
+
+    if any(term in lowered for term in {"test", "spec"}):
+        score += 1
+
+    if any(term in lowered for term in {"lock", "package-lock", "pnpm-lock", "cargo.lock"}):
+        score -= 3
+
+    return score
+
+
+def parse_pr_changed_paths(changed_files: str) -> list[str]:
+    """Parse git name-status output into changed paths."""
+    paths: list[str] = []
+
+    for line in changed_files.splitlines():
+        parts = line.split("\t")
+
+        if len(parts) < 2:
+            continue
+
+        status = parts[0].strip()
+
+        if not status:
+            continue
+
+        if status.startswith(("R", "C")) and len(parts) >= 3:
+            path = parts[2].strip()
+        else:
+            path = parts[-1].strip()
+
+        if path and path not in paths:
+            paths.append(path)
+
+    return paths
+
+
+def get_pr_primary_files(changed_files: str) -> str:
+    """Return a ranked list of the most app-relevant changed files."""
+    paths = parse_pr_changed_paths(changed_files)
+
+    if not paths:
+        return ""
+
+    scored = [(score_pr_file_path(path), path) for path in paths]
+    scored.sort(key=lambda item: (-item[0], item[1]))
+
+    primary_paths = [path for score, path in scored if score > 0][:PR_PRIMARY_FILE_LIMIT]
+
+    if not primary_paths:
+        primary_paths = [path for _, path in scored[:PR_PRIMARY_FILE_LIMIT]]
+
+    return "\n".join(f"- {path}" for path in primary_paths)
+
+
 def parse_args(
     argv: Sequence[str],
 ) -> tuple[Literal["commit", "commit_body", "pr_title", "pr_body"], str | None] | None:
@@ -1499,8 +1625,8 @@ def render_pr_title_prompt(
 def render_pr_body_prompt(
     base_ref: str,
     changed_files: str,
+    pr_primary_files: str,
     pr_highlights: str,
-    pr_commits: str,
     trimmed_diff: str,
     submodule_context: str,
 ) -> str:
@@ -1508,8 +1634,8 @@ def render_pr_body_prompt(
     return PR_BODY_PROMPT_TEMPLATE.format(
         base_ref=base_ref,
         changed_files=prompt_value(changed_files),
+        pr_primary_files=prompt_value(pr_primary_files),
         pr_highlights=prompt_value(pr_highlights),
-        pr_commits=prompt_value(pr_commits),
         submodule_context=prompt_value(submodule_context),
         trimmed_diff=trimmed_diff,
     )
@@ -1707,16 +1833,16 @@ def ask_ollama_pr_body(
     changed_files: str,
     diff_text: str,
     submodule_context: str,
+    pr_primary_files: str,
     pr_highlights: str,
-    pr_commits: str,
 ) -> str | None:
     """Ask Ollama for a concise bullet-only PR body."""
     trimmed_diff = diff_text[:MAX_DIFF_CHARS]
     prompt = render_pr_body_prompt(
         base_ref,
         changed_files,
+        pr_primary_files,
         pr_highlights,
-        pr_commits,
         trimmed_diff,
         submodule_context,
     )
@@ -1817,6 +1943,7 @@ def collect_pr_mode_inputs(base_ref: str) -> PRModeInputs | None:
     pr_raw_diff = get_pr_raw_diff(base_ref)
     submodule_changes = get_submodule_changes_from_raw(pr_raw_diff)
     submodule_context = build_submodule_context(submodule_changes)
+    pr_primary_files = get_pr_primary_files(changed_files)
     pr_highlights = get_pr_highlights(base_ref)
     pr_commits = get_pr_commits(base_ref)
 
@@ -1826,6 +1953,7 @@ def collect_pr_mode_inputs(base_ref: str) -> PRModeInputs | None:
         pr_raw_diff=pr_raw_diff,
         submodule_changes=submodule_changes,
         submodule_context=submodule_context,
+        pr_primary_files=pr_primary_files,
         pr_highlights=pr_highlights,
         pr_commits=pr_commits,
     )
@@ -1886,8 +2014,8 @@ def handle_pr_body_mode(base_ref: str) -> int:
         pr_inputs.changed_files,
         pr_inputs.pr_diff,
         pr_inputs.submodule_context,
+        pr_inputs.pr_primary_files,
         pr_inputs.pr_highlights,
-        pr_inputs.pr_commits,
     )
 
     if not body:
