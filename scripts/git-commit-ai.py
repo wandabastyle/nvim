@@ -121,15 +121,20 @@ Rules:
 - Output only markdown bullets
 - 3 to 6 bullets, one line each
 - No heading, intro, conclusion, or code fences
+- Start with the overall PR change, then list the most important supporting details
 - Focus on user-visible impact and key implementation details
 - Mention tests/validation only if clearly shown
 - Do not invent changes
-- Prioritize the most important or user-facing changes across the whole PR, not just the newest commit
-- Use the commits list as context, but do not anchor on the last commit
+- Prioritize the most important or user-facing changes across the whole PR
+- Use the impact highlights as primary context
+- Use the commits list only as secondary context, and do not anchor on the last commit
 - Avoid vague phrases like "latest commit(s)"
 
 Changed files:
 {changed_files}
+
+Impact highlights by diff size:
+{pr_highlights}
 
 Commits in range (already sorted by impact, most important first):
 {pr_commits}
@@ -181,6 +186,7 @@ class PRModeInputs:
     pr_raw_diff: str
     submodule_changes: list[SubmoduleChange]
     submodule_context: str
+    pr_highlights: str
     pr_commits: str
 
 
@@ -1194,6 +1200,52 @@ def get_pr_commits(base_ref: str) -> str:
     return "\n".join(item[4] for item in limited)
 
 
+def get_pr_highlights(base_ref: str) -> str:
+    """Return a diff-size ordered file impact summary for the PR range."""
+    numstat_output = run(
+        [
+            "git",
+            "diff",
+            "--numstat",
+            "--find-renames",
+            f"{base_ref}...HEAD",
+        ]
+    )
+
+    if not numstat_output:
+        return ""
+
+    highlights: list[tuple[int, str]] = []
+
+    for line in numstat_output.splitlines():
+        parts = line.split("\t")
+
+        if len(parts) < 3:
+            continue
+
+        added_text, deleted_text, path = parts[0], parts[1], parts[2]
+
+        if not added_text.isdigit() or not deleted_text.isdigit():
+            continue
+
+        added = int(added_text)
+        deleted = int(deleted_text)
+        total = added + deleted
+
+        if total <= 0:
+            continue
+
+        highlights.append((total, f"- {path} (+{added}/-{deleted})"))
+
+    if not highlights:
+        return ""
+
+    highlights.sort(key=lambda item: (-item[0], item[1]))
+    limited = highlights[:8]
+
+    return "\n".join(item[1] for item in limited)
+
+
 def parse_args(
     argv: Sequence[str],
 ) -> tuple[Literal["commit", "commit_body", "pr_title", "pr_body"], str | None] | None:
@@ -1447,6 +1499,7 @@ def render_pr_title_prompt(
 def render_pr_body_prompt(
     base_ref: str,
     changed_files: str,
+    pr_highlights: str,
     pr_commits: str,
     trimmed_diff: str,
     submodule_context: str,
@@ -1455,6 +1508,7 @@ def render_pr_body_prompt(
     return PR_BODY_PROMPT_TEMPLATE.format(
         base_ref=base_ref,
         changed_files=prompt_value(changed_files),
+        pr_highlights=prompt_value(pr_highlights),
         pr_commits=prompt_value(pr_commits),
         submodule_context=prompt_value(submodule_context),
         trimmed_diff=trimmed_diff,
@@ -1653,6 +1707,7 @@ def ask_ollama_pr_body(
     changed_files: str,
     diff_text: str,
     submodule_context: str,
+    pr_highlights: str,
     pr_commits: str,
 ) -> str | None:
     """Ask Ollama for a concise bullet-only PR body."""
@@ -1660,6 +1715,7 @@ def ask_ollama_pr_body(
     prompt = render_pr_body_prompt(
         base_ref,
         changed_files,
+        pr_highlights,
         pr_commits,
         trimmed_diff,
         submodule_context,
@@ -1761,6 +1817,7 @@ def collect_pr_mode_inputs(base_ref: str) -> PRModeInputs | None:
     pr_raw_diff = get_pr_raw_diff(base_ref)
     submodule_changes = get_submodule_changes_from_raw(pr_raw_diff)
     submodule_context = build_submodule_context(submodule_changes)
+    pr_highlights = get_pr_highlights(base_ref)
     pr_commits = get_pr_commits(base_ref)
 
     return PRModeInputs(
@@ -1769,6 +1826,7 @@ def collect_pr_mode_inputs(base_ref: str) -> PRModeInputs | None:
         pr_raw_diff=pr_raw_diff,
         submodule_changes=submodule_changes,
         submodule_context=submodule_context,
+        pr_highlights=pr_highlights,
         pr_commits=pr_commits,
     )
 
@@ -1828,6 +1886,7 @@ def handle_pr_body_mode(base_ref: str) -> int:
         pr_inputs.changed_files,
         pr_inputs.pr_diff,
         pr_inputs.submodule_context,
+        pr_inputs.pr_highlights,
         pr_inputs.pr_commits,
     )
 
