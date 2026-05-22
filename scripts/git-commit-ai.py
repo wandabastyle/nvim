@@ -178,6 +178,7 @@ Rules:
 - Do not invent changes
 - Prioritize the main app changes over tooling, skills, docs, and other support files unless those are the primary change
 - Use the primary file list and impact highlights as the main context
+- Ignore docs, tooling, scripts, skills, and workflow files when app/source files are present
 - Avoid vague phrases like "latest commit(s)"
 
 Changed files:
@@ -1253,6 +1254,10 @@ def get_pr_commits(base_ref: str) -> str:
 
 def get_pr_highlights(base_ref: str) -> str:
     """Return a diff-size ordered file impact summary for the PR range."""
+    name_status = get_pr_changed_files(base_ref)
+    changed_paths = parse_pr_changed_paths(name_status)
+    app_paths_present = any(is_primary_app_path(path) for path in changed_paths)
+
     numstat_output = run(
         [
             "git",
@@ -1284,6 +1289,9 @@ def get_pr_highlights(base_ref: str) -> str:
         total = added + deleted
 
         if total <= 0:
+            continue
+
+        if app_paths_present and not is_primary_app_path(path):
             continue
 
         highlights.append((total, f"- {path} (+{added}/-{deleted})"))
@@ -1328,6 +1336,19 @@ def score_pr_file_path(path: str) -> int:
     return score
 
 
+def is_primary_app_path(path: str) -> bool:
+    """Return True when a path looks like an app/source file."""
+    lowered = path.lower()
+
+    if not any(lowered.endswith(ext) for ext in CODE_FILE_EXTENSIONS):
+        return False
+
+    if any(f"/{hint}/" in f"/{lowered}/" or lowered.startswith(f"{hint}/") for hint in META_PATH_HINTS):
+        return False
+
+    return any(f"/{hint}/" in f"/{lowered}/" for hint in PRIMARY_APP_PATH_HINTS) or "/src/" in f"/{lowered}/"
+
+
 def parse_pr_changed_paths(changed_files: str) -> list[str]:
     """Parse git name-status output into changed paths."""
     paths: list[str] = []
@@ -1361,13 +1382,13 @@ def get_pr_primary_files(changed_files: str) -> str:
     if not paths:
         return ""
 
-    scored = [(score_pr_file_path(path), path) for path in paths]
+    app_paths = [path for path in paths if is_primary_app_path(path)]
+    primary_source = app_paths if app_paths else paths
+
+    scored = [(score_pr_file_path(path), path) for path in primary_source]
     scored.sort(key=lambda item: (-item[0], item[1]))
 
-    primary_paths = [path for score, path in scored if score > 0][:PR_PRIMARY_FILE_LIMIT]
-
-    if not primary_paths:
-        primary_paths = [path for _, path in scored[:PR_PRIMARY_FILE_LIMIT]]
+    primary_paths = [path for _, path in scored[:PR_PRIMARY_FILE_LIMIT]]
 
     return "\n".join(f"- {path}" for path in primary_paths)
 
