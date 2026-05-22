@@ -14,7 +14,8 @@ from typing import Literal, TypedDict, cast
 
 OLLAMA_URL = "http://127.0.0.1:11434/api/generate"
 OLLAMA_TAGS_URL = "http://127.0.0.1:11434/api/tags"
-MODEL = "qwen3-coder-next:cloud"
+CLOUD_MODEL = "qwen3-coder-next:cloud"
+LOCAL_MODEL = "qwen2.5-coder:7b"
 MAX_DIFF_CHARS = 12000
 SUBMODULE_LOG_COUNT = 5
 DEFAULT_PR_BASE = "origin/main"
@@ -1243,13 +1244,13 @@ def ensure_ollama() -> None:
         )
 
 
-def request_ollama_text(prompt: str, timeout: float = 80) -> str | None:
+def request_ollama_text(model: str, prompt: str, timeout: float = 80) -> str | None:
     """Send prompt to Ollama and return response text."""
     # Include an explicit context window size to avoid the default 4096‑token truncation.
     # The model supports up to 32768 tokens; 8192 provides ample headroom for our
     # diff + prompt while keeping memory usage modest.
     payload: dict[str, object] = {
-        "model": MODEL,
+        "model": model,
         "prompt": prompt,
         "stream": False,
         "keep_alive": "10m",
@@ -1285,6 +1286,29 @@ def request_ollama_text(prompt: str, timeout: float = 80) -> str | None:
         return None
 
     return text
+
+
+def request_ollama_text_with_fallback(prompt: str, timeout: float = 80) -> str | None:
+    """Try cloud model first, then fallback to local model on failure/empty."""
+    try:
+        cloud_text = request_ollama_text(CLOUD_MODEL, prompt, timeout=timeout)
+
+        if cloud_text:
+            return cloud_text
+
+    except Exception:
+        pass
+
+    try:
+        local_text = request_ollama_text(LOCAL_MODEL, prompt, timeout=timeout)
+
+        if local_text:
+            return local_text
+
+    except Exception:
+        return None
+
+    return None
 
 
 def prompt_value(text: str) -> str:
@@ -1376,7 +1400,7 @@ def ask_ollama(
         submodule_context,
     )
 
-    text = request_ollama_text(prompt)
+    text = request_ollama_text_with_fallback(prompt)
 
     if not text:
         return None
@@ -1463,7 +1487,7 @@ def ask_ollama_commit_body(
         submodule_context,
     )
 
-    text = request_ollama_text(prompt)
+    text = request_ollama_text_with_fallback(prompt)
 
     if not text:
         return None
@@ -1488,7 +1512,7 @@ def ask_ollama_pr_title(
         submodule_context,
     )
 
-    text = request_ollama_text(prompt)
+    text = request_ollama_text_with_fallback(prompt)
 
     if not text:
         return None
@@ -1560,7 +1584,7 @@ def ask_ollama_pr_body(
         submodule_context,
     )
 
-    text = request_ollama_text(prompt)
+    text = request_ollama_text_with_fallback(prompt)
 
     if not text:
         return None
