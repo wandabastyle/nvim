@@ -75,3 +75,7 @@ vim.opt.redrawtime = 10000
 vim.opt.maxmempattern = 20000
 
 -- vim.cmd("set completeopt+=noselect")
+
+-- Spell checking
+vim.opt.spelllang = "en_us"
+vim.opt.spellfile = vim.fn.expand("~/.config/nvim/spell/custom.utf-8.add")

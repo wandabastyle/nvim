@@ -39,6 +39,18 @@ return {
 					"fallback",
 				},
 			},
+			-- Enable completion for spell checking contexts
+			trigger = {
+				completion = {
+					-- Trigger completion after typing 2 characters
+					keyword_range = "full",
+				},
+			},
+		},
+		-- Add completion sources for spelling
+		dependencies = {
+			-- Optional: blink-cmp-spell for better spell completion
+			-- { "f3fora/cmp-spell" }, -- Can be used with compatible sources
 		},
 	},
 }

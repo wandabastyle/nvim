@@ -3,6 +3,7 @@ local ollama = require("config.ollama")
 local python_indent = vim.api.nvim_create_augroup("python_indent", { clear = true })
 local ollama_lifecycle = vim.api.nvim_create_augroup("ollama_lifecycle", { clear = true })
 local external_file_watch = vim.api.nvim_create_augroup("external_file_watch", { clear = true })
+local spell_group = vim.api.nvim_create_augroup("spell_checking", { clear = true })
 
 local nvim_focused = true
 local checktime_timer = vim.uv.new_timer()
@@ -112,5 +113,25 @@ vim.api.nvim_create_autocmd("VimLeavePre", {
 			checktime_timer:close()
 			checktime_timer = nil
 		end
+	end,
+})
+
+-- Enable spell checking for prose filetypes
+vim.api.nvim_create_autocmd("FileType", {
+	group = spell_group,
+	pattern = { "markdown", "text", "gitcommit", "norg", "asciidoc" },
+	callback = function()
+		vim.opt_local.spell = true
+		vim.opt_local.wrap = true
+		vim.opt_local.linebreak = true
+	end,
+})
+
+-- Optional: Enable spell checking for specific file extensions
+vim.api.nvim_create_autocmd({ "BufRead", "BufNewFile" }, {
+	group = spell_group,
+	pattern = { "*.md", "*.txt", "*.adoc", "*.norg", "COMMIT_EDITMSG" },
+	callback = function()
+		vim.opt_local.spell = true
 	end,
 })

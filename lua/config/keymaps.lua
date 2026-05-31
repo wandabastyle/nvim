@@ -41,3 +41,23 @@ vim.keymap.set("n", "<leader>fc", function()
 end, { desc = "Find config files" })
 
 vim.keymap.set("n", "<Esc>", "<Esc>:nohlsearch<CR>", { silent = true, desc = "Clear search highlight" })
+
+-- Spell checking
+vim.keymap.set("n", "<leader>ts", function()
+	vim.wo.spell = not vim.wo.spell
+	local status = vim.wo.spell and "enabled" or "disabled"
+	vim.notify("Spell checking " .. status, vim.log.levels.INFO)
+end, { desc = "Toggle spell checking" })
+
+-- Navigate to next/previous misspelled word
+vim.keymap.set("n", "]s", "]s", { desc = "Next misspelled word" })
+vim.keymap.set("n", "[s", "[s", { desc = "Previous misspelled word" })
+
+-- Show spelling suggestions for word under cursor
+vim.keymap.set("n", "z=", "z=", { desc = "Show spelling suggestions" })
+
+-- Add word to spell file
+vim.keymap.set("n", "zg", "zg", { desc = "Add word to spell file" })
+
+-- Mark word as wrong
+vim.keymap.set("n", "zw", "zw", { desc = "Mark word as wrong" })
