@@ -11,6 +11,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from http.client import HTTPResponse
 from typing import Literal, TypedDict, cast
+from urllib.error import URLError
 
 OLLAMA_URL = "http://127.0.0.1:11434/api/generate"
 OLLAMA_TAGS_URL = "http://127.0.0.1:11434/api/tags"
@@ -276,6 +277,7 @@ def run(cmd: Sequence[str]) -> str | None:
         cmd,
         text=True,
         capture_output=True,
+        check = False,
     )
 
     if result.returncode != 0:
@@ -374,7 +376,7 @@ def get_commit_changed_paths(diff_kind: Literal["staged", "working"]) -> list[st
             continue
 
         if path.startswith("./"):
-            path = path[2:]
+            path = path.removeprefix("./")
 
         if path not in paths:
             paths.append(path)
@@ -576,7 +578,7 @@ def load_history_cache() -> HistoryCacheFile:
             "repos": parse_history_repos(parsed_dict.get("repos")),
         }
 
-    except Exception:
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
         _history_cache_data = empty_history_cache()
 
     return _history_cache_data
@@ -606,7 +608,7 @@ def save_history_cache() -> None:
 
         os.replace(tmp_path, path)
 
-    except Exception:
+    except OSError:
         return
 
 
@@ -1002,11 +1004,11 @@ def score_submodule_description(text: str, history_profile: HistoryProfile) -> i
     ):
         score += 2
 
-    if any(term in lowered for term in {"nvim", "config", "keymap", "lsp", "plugin"}):
+    if any(term in lowered for term in ("nvim", "config", "keymap", "lsp", "plugin")):
         score += 1
 
     if any(
-        term in lowered for term in {"update", "changes", "misc", "cleanup", "stuff"}
+        term in lowered for term in ("update", "changes", "misc", "cleanup", "stuff")
     ):
         score -= 1
 
@@ -1327,10 +1329,10 @@ def score_pr_file_path(path: str) -> int:
         if f"/{hint}/" in f"/{lowered}/" or lowered.startswith(f"{hint}/"):
             score -= 4
 
-    if any(term in lowered for term in {"test", "spec"}):
+    if any(term in lowered for term in ("test", "spec")):
         score += 1
 
-    if any(term in lowered for term in {"lock", "package-lock", "pnpm-lock", "cargo.lock"}):
+    if any(term in lowered for term in ("lock", "package-lock", "pnpm-lock", "cargo.lock")):
         score -= 3
 
     return score
@@ -1469,7 +1471,7 @@ def ollama_ping() -> bool:
         with cast(HTTPResponse, urllib.request.urlopen(request, timeout=1.2)):
             return True
 
-    except Exception:
+    except (URLError, TimeoutError):
         return False
 
 
@@ -1489,6 +1491,7 @@ def ensure_ollama() -> None:
             ],
             text=True,
             capture_output=True,
+            check = False,
         )
 
         if result.returncode != 0:
@@ -1515,6 +1518,7 @@ def ensure_ollama() -> None:
         ],
         text=True,
         capture_output=True,
+        check = False,
     )
 
     if timer_result.returncode != 0:
@@ -1576,7 +1580,7 @@ def request_ollama_text_with_fallback(prompt: str, timeout: float = 80) -> str |
         if cloud_text:
             return cloud_text
 
-    except Exception:
+    except (URLError, TimeoutError, UnicodeDecodeError, json.JSONDecodeError):
         pass
 
     try:
@@ -1585,7 +1589,7 @@ def request_ollama_text_with_fallback(prompt: str, timeout: float = 80) -> str |
         if local_text:
             return local_text
 
-    except Exception:
+    except (URLError, TimeoutError, UnicodeDecodeError, json.JSONDecodeError):
         return None
 
     return None
@@ -1740,11 +1744,7 @@ def is_valid_conventional_subject(text: str) -> bool:
         return False
 
     parts = first_line.split(":", 1)
-    if len(parts) != 2 or not parts[1].strip():
-        return False
-
-    return True
-
+    return not (len(parts) != 2 or not parts[1].strip())
 
 def fallback_commit_subject(scope: str | None) -> str:
     """Return a deterministic fallback commit subject."""
