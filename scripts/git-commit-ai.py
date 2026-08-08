@@ -15,7 +15,7 @@ from urllib.error import URLError
 
 OLLAMA_URL = "http://127.0.0.1:11434/api/generate"
 OLLAMA_TAGS_URL = "http://127.0.0.1:11434/api/tags"
-CLOUD_MODEL = "qwen3-coder-next:cloud"
+CLOUD_MODEL = "kimi-k2.7-code:cloud"
 LOCAL_MODEL = "qwen2.5-coder:7b"
 MAX_DIFF_CHARS = 12000
 SUBMODULE_LOG_COUNT = 5
